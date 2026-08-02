@@ -1,0 +1,513 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --color-neon-cyan: var(--neon-cyan);
+  --color-neon-pink: var(--neon-pink);
+  --color-neon-green: var(--neon-green);
+  --color-neon-gold: var(--neon-gold);
+  --color-neon-violet: var(--neon-violet);
+  --color-coin-btc: var(--coin-btc);
+  --color-coin-bch: var(--coin-bch);
+  --color-coin-xec: var(--coin-xec);
+  --color-coin-fb: var(--coin-fb);
+  --color-coin-dgb: var(--coin-dgb);
+  --color-coin-bc2: var(--coin-bc2);
+  --color-coin-ppc: var(--coin-ppc);
+  --color-panel: var(--panel);
+  --color-panel-border: var(--panel-border);
+  --color-grid: var(--grid-line);
+
+  --animate-spin-slow: spin 26s linear infinite;
+  --animate-spin-reverse: spin-reverse 38s linear infinite;
+  --animate-pulse-glow: pulse-glow 3.2s ease-in-out infinite;
+  --animate-float: float 7s ease-in-out infinite;
+  --animate-draw: draw 2.4s ease-out forwards;
+  --animate-scan: scan 5s linear infinite;
+  --animate-rise: rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-flicker: flicker 4s steps(1, end) infinite;
+  --animate-ticker: ticker 26s linear infinite;
+}
+
+@keyframes spin-reverse {
+  from {
+    transform: rotate(360deg);
+  }
+  to {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes pulse-glow {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(0.96);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(-5px);
+  }
+  50% {
+    transform: translateY(5px);
+  }
+}
+
+@keyframes draw {
+  from {
+    stroke-dashoffset: 1200;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes scan {
+  0% {
+    transform: translateX(-110%);
+  }
+  100% {
+    transform: translateX(110%);
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(22px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes flicker {
+  0%,
+  92%,
+  100% {
+    opacity: 1;
+  }
+  94% {
+    opacity: 0.45;
+  }
+  96% {
+    opacity: 0.85;
+  }
+}
+
+@keyframes ticker {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes ring-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes ring-in {
+  from {
+    opacity: 0;
+    transform: rotate(-14deg) scale(0.88);
+  }
+  to {
+    opacity: 1;
+    transform: rotate(0deg) scale(1);
+  }
+}
+
+@keyframes grow-x {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes charge {
+  from {
+    stroke-dashoffset: 100;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes heartbeat {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  14% {
+    transform: scale(1.16);
+  }
+  28% {
+    transform: scale(1);
+  }
+  42% {
+    transform: scale(1.1);
+  }
+  56% {
+    transform: scale(1);
+  }
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    transform: scale(0.94);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.06);
+    opacity: 1;
+  }
+}
+
+@keyframes fade-cycle {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes block-tumble {
+  0%,
+  100% {
+    transform: rotate(0deg) translateY(0);
+  }
+  35% {
+    transform: rotate(-8deg) translateY(-1.5px);
+  }
+  70% {
+    transform: rotate(8deg) translateY(1.5px);
+  }
+}
+
+@keyframes share-relay {
+  0%,
+  100% {
+    opacity: 0.2;
+  }
+  25%,
+  75% {
+    opacity: 1;
+  }
+}
+
+@keyframes eq {
+  0%,
+  100% {
+    transform: scaleY(0.35);
+    opacity: 0.55;
+  }
+  50% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+@keyframes wave-slide {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-100px);
+  }
+}
+
+@keyframes gauge-sweep {
+  0% {
+    stroke-dashoffset: 82;
+  }
+  60%,
+  75% {
+    stroke-dashoffset: 18;
+  }
+  100% {
+    stroke-dashoffset: 82;
+  }
+}
+
+@keyframes ripple {
+  0% {
+    transform: scale(0.25);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+@keyframes relay {
+  0% {
+    left: -12%;
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  88% {
+    opacity: 1;
+  }
+  100% {
+    left: 102%;
+    opacity: 0;
+  }
+}
+
+@keyframes bubble {
+  0% {
+    transform: translateY(6px) scale(0.6);
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-26px) scale(1);
+    opacity: 0;
+  }
+}
+
+@keyframes flow-right {
+  0% {
+    left: -6%;
+    opacity: 0;
+  }
+  15%,
+  85% {
+    opacity: 1;
+  }
+  100% {
+    left: 102%;
+    opacity: 0;
+  }
+}
+
+@keyframes flow-left {
+  0% {
+    left: 102%;
+    opacity: 0;
+  }
+  15%,
+  85% {
+    opacity: 1;
+  }
+  100% {
+    left: -6%;
+    opacity: 0;
+  }
+}
+
+@utility panel-neon {
+  position: relative;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--panel-border);
+  background:
+    linear-gradient(160deg, color-mix(in oklab, var(--panel) 92%, transparent), transparent 70%),
+    var(--panel);
+  box-shadow: var(--shadow-panel);
+  overflow: hidden;
+}
+
+@utility glow-text {
+  text-shadow: 0 0 14px color-mix(in oklab, currentColor 55%, transparent);
+}
+
+@utility grid-backdrop {
+  background-image:
+    linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+  background-size: 46px 46px;
+}
+
+/*
+ * Design system definition.
+ *
+ * The @theme inline block maps CSS custom properties to Tailwind utility
+ * classes (e.g. --color-primary -> bg-primary, text-primary).
+ *
+ * The :root and .dark blocks define the actual color values using oklch.
+ * All colors MUST use oklch format.
+ *
+ * To add a new semantic color:
+ * 1. Add the variable to :root (light value) and .dark (dark value)
+ * 2. Register it in @theme inline as --color-<name>: var(--<name>)
+ */
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+:root {
+  --radius: 0.75rem;
+  --background: oklch(0.11 0.018 270);
+  --foreground: oklch(0.96 0.008 250);
+  --card: oklch(0.15 0.024 272);
+  --card-foreground: oklch(0.96 0.008 250);
+  --popover: oklch(0.15 0.024 272);
+  --popover-foreground: oklch(0.96 0.008 250);
+  --primary: oklch(0.72 0.25 340);
+  --primary-foreground: oklch(0.12 0.02 270);
+  --secondary: oklch(0.22 0.035 272);
+  --secondary-foreground: oklch(0.96 0.008 250);
+  --muted: oklch(0.2 0.03 272);
+  --muted-foreground: oklch(0.68 0.025 265);
+  --accent: oklch(0.82 0.15 210);
+  --accent-foreground: oklch(0.12 0.02 270);
+  --destructive: oklch(0.62 0.24 22);
+  --destructive-foreground: oklch(0.97 0.01 250);
+  --border: oklch(0.28 0.04 274);
+  --input: oklch(0.26 0.04 274);
+  --ring: oklch(0.72 0.25 340);
+
+  --neon-cyan: oklch(0.83 0.15 210);
+  --neon-pink: oklch(0.74 0.25 340);
+  --neon-green: oklch(0.84 0.2 152);
+  --neon-gold: oklch(0.84 0.16 78);
+  --neon-violet: oklch(0.66 0.25 296);
+
+  --coin-btc: oklch(0.82 0.16 74);
+  --coin-bch: oklch(0.84 0.2 152);
+  --coin-xec: oklch(0.83 0.15 210);
+  --coin-fb: oklch(0.76 0.18 45);
+  --coin-dgb: oklch(0.7 0.19 258);
+  --coin-bc2: oklch(0.68 0.24 296);
+  --coin-ppc: oklch(0.78 0.18 132);
+
+  --panel: oklch(0.145 0.022 272);
+  --panel-border: oklch(0.3 0.05 280);
+  --grid-line: oklch(0.24 0.035 274 / 0.6);
+  --shadow-panel: 0 0 0 1px oklch(0.3 0.05 280 / 0.35), 0 24px 60px -30px oklch(0.05 0 0 / 0.9);
+
+  --chart-1: var(--neon-pink);
+  --chart-2: var(--neon-cyan);
+  --chart-3: var(--neon-violet);
+  --chart-4: var(--neon-gold);
+  --chart-5: var(--neon-green);
+  --sidebar: oklch(0.13 0.02 272);
+  --sidebar-foreground: oklch(0.96 0.008 250);
+  --sidebar-primary: oklch(0.74 0.25 340);
+  --sidebar-primary-foreground: oklch(0.12 0.02 270);
+  --sidebar-accent: oklch(0.22 0.035 272);
+  --sidebar-accent-foreground: oklch(0.96 0.008 250);
+  --sidebar-border: oklch(0.28 0.04 274);
+  --sidebar-ring: oklch(0.74 0.25 340);
+}
+
+.dark {
+  --background: oklch(0.129 0.042 264.695);
+  --foreground: oklch(0.984 0.003 247.858);
+  --card: oklch(0.208 0.042 265.755);
+  --card-foreground: oklch(0.984 0.003 247.858);
+  --popover: oklch(0.208 0.042 265.755);
+  --popover-foreground: oklch(0.984 0.003 247.858);
+  --primary: oklch(0.929 0.013 255.508);
+  --primary-foreground: oklch(0.208 0.042 265.755);
+  --secondary: oklch(0.279 0.041 260.031);
+  --secondary-foreground: oklch(0.984 0.003 247.858);
+  --muted: oklch(0.279 0.041 260.031);
+  --muted-foreground: oklch(0.704 0.04 256.788);
+  --accent: oklch(0.279 0.041 260.031);
+  --accent-foreground: oklch(0.984 0.003 247.858);
+  --destructive: oklch(0.704 0.191 22.216);
+  --destructive-foreground: oklch(0.984 0.003 247.858);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.551 0.027 264.364);
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.208 0.042 265.755);
+  --sidebar-foreground: oklch(0.984 0.003 247.858);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
+  --sidebar-accent: oklch(0.279 0.041 260.031);
+  --sidebar-accent-foreground: oklch(0.984 0.003 247.858);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.551 0.027 264.364);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--neon-pink) 45%, transparent);
+  }
+}
