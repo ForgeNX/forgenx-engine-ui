@@ -16,16 +16,15 @@ export function InstallRing({ apps, selectedId }: { apps: ForgeApp[]; selectedId
 
   return (
     <div className="relative mx-auto aspect-square w-full max-w-[150px]">
-      <div
-        className="absolute inset-[16%] rounded-full animate-pulse-glow"
-        style={{
-          background: `radial-gradient(circle, color-mix(in oklab, ${
-            installed.find((a) => a.id === selectedId)?.color ?? "var(--neon-cyan)"
-          } 26%, transparent), transparent 70%)`,
-        }}
-      />
       <svg viewBox="0 0 160 160" className="absolute inset-0 -rotate-90">
-        <circle cx="80" cy="80" r={radius} fill="none" stroke="var(--secondary)" strokeWidth="11" />
+        <circle
+          cx="80"
+          cy="80"
+          r={radius}
+          fill="none"
+          stroke="oklch(0.16 0.02 265)"
+          strokeWidth="11"
+        />
         {installed.map((app, i) => (
           <circle
             key={app.id}
@@ -39,9 +38,7 @@ export function InstallRing({ apps, selectedId }: { apps: ForgeApp[]; selectedId
             strokeDasharray={`${Math.max(0, slice - gap)} ${circumference - slice + gap}`}
             strokeDashoffset={-(i * slice) - circumference}
             style={{
-              filter: `drop-shadow(0 0 8px color-mix(in oklab, ${app.color} 70%, transparent))`,
-              opacity: app.online ? 1 : 0.45,
-              transition: "stroke-width 400ms ease, opacity 400ms ease",
+              transition: "stroke-width 400ms ease",
               animation: `ring-in 1.1s cubic-bezier(0.22,1,0.36,1) ${i * 110}ms both`,
             }}
           />
@@ -52,7 +49,7 @@ export function InstallRing({ apps, selectedId }: { apps: ForgeApp[]; selectedId
           {online}/{installed.length || 0}
         </p>
         <p className="text-xs font-semibold text-neon-green glow-text">Online</p>
-        <p className="text-[0.52rem] leading-tight tracking-[0.14em] text-muted-foreground uppercase">
+        <p className="text-[0.52rem] leading-tight tracking-[0.14em] text-white uppercase">
           {installed.length}/{total} installed
         </p>
       </div>

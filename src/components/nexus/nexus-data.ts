@@ -5,11 +5,16 @@ export type ForgeAppNode = {
   checks: { label: string; ok: boolean }[];
   blockHeight: string;
   bestHeight: string;
+  blocksFound: number;
+  blocksOrphaned: number;
   lastBlock: string;
   lastBlockAgo: string;
   stratumV1: string;
   stratumV2: string;
-  workerName: string;
+  stratumV1Subtitle: string; // shown under the V1 URL (empty)
+  stratumV2Subtitle: string; // shown under the V2 URL (authority pubkey)
+  workerName: string; // short worker name (settings)
+  fullWorkerName: string; // payoutAddress.workerName (Worker Address / Name field)
   workerHint: string;
   networkDifficulty: string;
   networkHashrate: string;
@@ -22,6 +27,7 @@ export type ForgeApp = {
   chain: string;
   symbol: string;
   color: string;
+  icon?: string;
   installed: boolean;
   online: boolean;
   hashrate: string;
@@ -44,11 +50,16 @@ function node(partial: Partial<ForgeAppNode>): ForgeAppNode {
     ],
     blockHeight: "845,721",
     bestHeight: "845,721",
+    blocksFound: 0,
+    blocksOrphaned: 0,
     lastBlock: "26 May 2025, 10:42:31",
     lastBlockAgo: "2 minutes ago",
     stratumV1: "stratum+tcp://forgepool.local:3333",
     stratumV2: "stratum+tls://forgepool.local:443",
+    stratumV1Subtitle: "",
+    stratumV2Subtitle: "",
     workerName: "YourWorkerName",
+    fullWorkerName: "YourAddress.YourWorkerName",
     workerHint: "e.g. Nano-3S-01",
     networkDifficulty: "85.67 T",
     networkHashrate: "568.12 EH/s",
@@ -86,6 +97,8 @@ export const FORGE_APPS: ForgeApp[] = [
     node: node({
       blockHeight: "899,412",
       bestHeight: "899,412",
+      blocksFound: 0,
+      blocksOrphaned: 0,
       lastBlock: "26 May 2025, 10:39:04",
       lastBlockAgo: "5 minutes ago",
       stratumV1: "stratum+tcp://forgepool.local:3334",
@@ -207,6 +220,8 @@ export const FORGE_APPS: ForgeApp[] = [
       ],
       blockHeight: "—",
       bestHeight: "—",
+      blocksFound: 0,
+      blocksOrphaned: 0,
       lastBlock: "No data",
       lastBlockAgo: "awaiting install",
       stratumV1: "unavailable",

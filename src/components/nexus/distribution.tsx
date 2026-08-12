@@ -4,19 +4,12 @@ import type { ForgeApp } from "./nexus-data";
 
 function DistributionDonut({ apps }: { apps: ForgeApp[] }) {
   const total = apps.reduce((sum, a) => sum + a.percentage, 0) || 1;
-  const radius = 58;
+  const radius = 62;
   const circumference = 2 * Math.PI * radius;
   let offset = 0;
 
   return (
-    <div className="relative mx-auto aspect-square w-full max-w-[186px]">
-      <div
-        className="absolute inset-[20%] rounded-full animate-pulse-glow"
-        style={{
-          background:
-            "radial-gradient(circle, color-mix(in oklab, var(--neon-gold) 26%, transparent), transparent 72%)",
-        }}
-      />
+    <div className="relative mx-auto aspect-square w-full max-w-[150px]">
       <svg viewBox="0 0 160 160" className="absolute inset-0 -rotate-90 animate-spin-slow">
         {apps.map((app, i) => {
           const length = (app.percentage / total) * circumference;
@@ -31,11 +24,10 @@ function DistributionDonut({ apps }: { apps: ForgeApp[] }) {
               r={radius}
               fill="none"
               stroke={app.color}
-              strokeWidth="26"
+              strokeWidth="11"
               strokeDasharray={dash}
               strokeDashoffset={dashOffset}
               style={{
-                filter: `drop-shadow(0 0 10px color-mix(in oklab, ${app.color} 60%, transparent))`,
                 animation: `ring-in 1.2s cubic-bezier(0.22,1,0.36,1) ${i * 90}ms both`,
               }}
             />
@@ -75,15 +67,15 @@ export function HashrateDistribution({
         <DistributionDonut apps={apps} />
 
         <div className="min-w-0 overflow-x-auto">
-          <table className="w-full min-w-[420px] border-collapse">
+          <table className="w-full min-w-[420px] border-separate border-spacing-y-1">
             <thead>
-              <tr className="text-[0.58rem] tracking-[0.16em] text-muted-foreground uppercase">
+              <tr className="text-[0.58rem] tracking-[0.16em] text-white uppercase">
                 <th className="pb-2 text-left font-semibold">Coin</th>
+                <th className="pb-2 text-right font-semibold">Miners</th>
                 <th className="pb-2 text-left font-semibold">Hashrate</th>
                 <th className="hidden pb-2 text-left font-semibold 2xl:table-cell">Distribution</th>
                 <th className="pb-2 text-right font-semibold">%</th>
                 <th className="pb-2 text-right font-semibold">Status</th>
-                <th className="hidden pb-2 text-right font-semibold 2xl:table-cell">Miners</th>
               </tr>
             </thead>
             <tbody>
@@ -99,17 +91,17 @@ export function HashrateDistribution({
                       animation: `rise 0.6s cubic-bezier(0.22,1,0.36,1) ${i * 55}ms both`,
                     }}
                   >
-                    <td className="py-2 pr-3">
+                    <td className="rounded-l-full py-2 pr-3 pl-3">
                       <span className="flex items-center gap-2">
                         <span
-                          className="font-display flex size-7 items-center justify-center rounded-lg border text-xs font-bold transition-transform duration-300 group-hover:scale-110"
-                          style={{
-                            color: app.color,
-                            borderColor: `color-mix(in oklab, ${app.color} 55%, transparent)`,
-                            background: `color-mix(in oklab, ${app.color} 14%, transparent)`,
-                          }}
+                          className="font-display flex size-10 items-center justify-center overflow-hidden rounded-md text-xs font-bold transition-transform duration-300 group-hover:scale-110"
+                          style={{ color: app.color }}
                         >
-                          {app.symbol}
+                          {app.icon ? (
+                            <img src={app.icon} alt={app.ticker} className="size-full object-contain" />
+                          ) : (
+                            app.symbol
+                          )}
                         </span>
                         <span className="min-w-0">
                           <span className="block truncate text-[0.8rem] font-semibold">{app.ticker}</span>
@@ -117,7 +109,13 @@ export function HashrateDistribution({
                         </span>
                       </span>
                     </td>
-                    <td className="py-2 pr-3 font-mono text-[0.78rem] font-semibold tabular-nums" style={{ color: app.color }}>
+                    <td className="py-2 pr-3 text-right">
+                      <span className="inline-flex items-center gap-1.5 font-mono text-[0.78rem] tabular-nums">
+                        <Users className="size-3 text-muted-foreground" />
+                        {app.miners}
+                      </span>
+                    </td>
+                    <td className="py-2 pr-3 font-mono text-[0.78rem] font-semibold tabular-nums" style={{ color: `color-mix(in oklab, ${app.color} 55%, white)` }}>
                       {app.hashrate}
                     </td>
                     <td className="hidden py-2 pr-3 2xl:table-cell">
@@ -126,7 +124,7 @@ export function HashrateDistribution({
                           className="block h-full rounded-full"
                           style={{
                             width: `${(app.percentage / max) * 100}%`,
-                            background: `linear-gradient(90deg, color-mix(in oklab, ${app.color} 55%, transparent), ${app.color})`,
+                            background: `linear-gradient(90deg, ${app.color}, color-mix(in oklab, ${app.color} 55%, white))`,
                             boxShadow: `0 0 10px color-mix(in oklab, ${app.color} 65%, transparent)`,
                             animation: `grow-x 1.1s cubic-bezier(0.22,1,0.36,1) ${i * 70}ms both`,
                             transformOrigin: "left",
@@ -137,7 +135,7 @@ export function HashrateDistribution({
                     <td className="py-2 pr-3 text-right font-mono text-[0.78rem] font-semibold tabular-nums">
                       {app.percentage.toFixed(1)}%
                     </td>
-                    <td className="py-2 pr-3 text-right">
+                    <td className="rounded-r-full py-2 pr-3 text-right">
                       <span
                         className="inline-flex items-center gap-1.5 text-[0.6rem] font-semibold tracking-[0.14em] uppercase"
                         style={{ color: app.installed ? "var(--neon-green)" : "var(--muted-foreground)" }}
@@ -150,12 +148,6 @@ export function HashrateDistribution({
                           }}
                         />
                         {app.installed ? "Active" : "Idle"}
-                      </span>
-                    </td>
-                    <td className="hidden py-2 text-right 2xl:table-cell">
-                      <span className="inline-flex items-center gap-1.5 font-mono text-[0.78rem] tabular-nums">
-                        <Users className="size-3 text-muted-foreground" />
-                        {app.miners}
                       </span>
                     </td>
                   </tr>

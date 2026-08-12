@@ -5,8 +5,14 @@ import { HashrateChart } from "./hashrate-chart";
 import { HashrateDistribution } from "./distribution";
 import { NodeDetail } from "./node-detail";
 import { NodeStatus } from "./node-status";
+import { LogsPanel } from "./logs-panel";
+import { InformationPanel } from "./information-panel";
+import { EngineControls } from "./engine-controls";
+import { SettingsPanel } from "./settings-panel";
 import { StatPills } from "./stat-pills";
-import { FORGE_APPS, NEXUS_TABS, type NexusTab } from "./nexus-data";
+import { NEXUS_TABS, type NexusTab } from "./nexus-data";
+import { useForgeApps } from "@/hooks/use-forge-apps";
+import { useEngineInfo, useEngineUptime, useCoinSV2List } from "@/hooks/use-engine-meta";
 
 const TAB_ICONS: Record<NexusTab, typeof Home> = {
   Overview: Home,
@@ -20,8 +26,14 @@ const TAB_ICONS: Record<NexusTab, typeof Home> = {
 
 export function NexusShell() {
   const [tab, setTab] = useState<NexusTab>("Overview");
-  const [selectedId, setSelectedId] = useState(FORGE_APPS[0]!.id);
-  const selected = FORGE_APPS.find((a) => a.id === selectedId) ?? FORGE_APPS[0]!;
+  const { apps, fleet, loading } = useForgeApps();
+  const engineInfo = useEngineInfo();
+  const engineUptime = useEngineUptime();
+  const { coins: sv2Coins, refresh: refreshSV2 } = useCoinSV2List();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  // Default the selection to the first coin once data arrives.
+  const selected = apps.find((a) => a.id === selectedId) ?? apps[0] ?? null;
 
   return (
     <div className="panel-neon relative m-2 flex min-h-[calc(100vh-1rem)] flex-col md:m-4">
@@ -70,7 +82,7 @@ export function NexusShell() {
                 aria-current={active ? "page" : undefined}
                 className="relative flex items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-semibold whitespace-nowrap transition-all duration-300 hover:text-foreground"
                 style={{
-                  color: active ? "var(--neon-cyan)" : "var(--muted-foreground)",
+                  color: active ? "var(--neon-cyan)" : "var(--foreground)",
                   background: active ? "color-mix(in oklab, var(--neon-cyan) 14%, transparent)" : undefined,
                   border: `1px solid ${active ? "color-mix(in oklab, var(--neon-cyan) 55%, transparent)" : "transparent"}`,
                   boxShadow: active ? "0 0 22px -8px var(--neon-cyan)" : undefined,
@@ -100,19 +112,44 @@ export function NexusShell() {
           Online
           <ChevronDown className="size-3.5" />
         </button>
+        <EngineControls />
       </header>
 
       <div className="grid-backdrop flex-1 space-y-4 p-3 md:p-4">
         {tab === "Overview" ? (
-          <>
-            <StatPills />
-            <div className="grid gap-4 2xl:grid-cols-[minmax(0,1.05fr)_minmax(0,1.2fr)_minmax(0,1.25fr)]">
-              <NodeStatus apps={FORGE_APPS} selectedId={selectedId} onSelect={setSelectedId} />
-              <NodeDetail app={selected} />
-              <HashrateDistribution apps={FORGE_APPS} selectedId={selectedId} onSelect={setSelectedId} />
+          loading && apps.length === 0 ? (
+            <div className="panel-neon animate-rise flex min-h-[300px] flex-col items-center justify-center gap-3 p-10 text-center">
+              <span
+                className="size-2 rounded-full bg-neon-cyan"
+                style={{ animation: "pulse-glow 2s ease-in-out infinite" }}
+              />
+              <p className="font-display text-2xl font-bold tracking-[0.12em] uppercase">Connecting</p>
+              <p className="text-sm text-muted-foreground">Reading live engine telemetry…</p>
             </div>
-            <HashrateChart />
-          </>
+          ) : selected ? (
+            <>
+              <StatPills apps={apps} fleet={fleet} />
+              <div className="grid gap-4 2xl:grid-cols-[minmax(0,1.05fr)_minmax(0,1.2fr)_minmax(0,1.25fr)]">
+                <NodeStatus apps={apps} selectedId={selected.id} onSelect={setSelectedId} />
+                <NodeDetail app={selected} />
+                <HashrateDistribution apps={apps} selectedId={selected.id} onSelect={setSelectedId} />
+              </div>
+              <HashrateChart app={selected} />
+            </>
+          ) : (
+            <div className="panel-neon animate-rise flex min-h-[300px] flex-col items-center justify-center gap-3 p-10 text-center">
+              <p className="font-display text-2xl font-bold tracking-[0.12em] uppercase">No coins installed</p>
+              <p className="text-sm text-muted-foreground">Install a coin app to begin.</p>
+            </div>
+          )
+        ) : tab === "Logs" ? (
+          <div className="flex h-[calc(100vh-9rem)] flex-col">
+            <LogsPanel />
+          </div>
+        ) : tab === "Information" ? (
+          <InformationPanel coinCount={apps.length} info={engineInfo} uptime={engineUptime} />
+        ) : tab === "Settings" ? (
+          <SettingsPanel coins={sv2Coins} refresh={refreshSV2} />
         ) : (
           <div className="panel-neon animate-rise flex min-h-[300px] flex-col items-center justify-center gap-3 p-10 text-center">
             <span

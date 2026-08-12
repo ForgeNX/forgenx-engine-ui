@@ -432,13 +432,13 @@
   --neon-gold: oklch(0.84 0.16 78);
   --neon-violet: oklch(0.66 0.25 296);
 
-  --coin-btc: oklch(0.82 0.16 74);
-  --coin-bch: oklch(0.84 0.2 152);
-  --coin-xec: oklch(0.83 0.15 210);
-  --coin-fb: oklch(0.76 0.18 45);
-  --coin-dgb: oklch(0.7 0.19 258);
-  --coin-bc2: oklch(0.68 0.24 296);
-  --coin-ppc: oklch(0.78 0.18 132);
+  --coin-btc: oklch(0.72 0.19 64);
+  --coin-bch: #09b918;
+  --coin-xec: oklch(0.66 0.17 235);
+  --coin-fb: oklch(0.66 0.21 40);
+  --coin-dgb: #0410fa;
+  --coin-bc2: oklch(0.58 0.26 296);
+  --coin-ppc: oklch(0.64 0.2 140);
 
   --panel: oklch(0.145 0.022 272);
   --panel-border: oklch(0.3 0.05 280);
@@ -511,3 +511,47 @@
     background: color-mix(in oklab, var(--neon-pink) 45%, transparent);
   }
 }
+
+@keyframes aurora {
+  0% {
+    background-position: 0% 50%;
+    transform: rotate(-5deg) scale(0.9);
+  }
+  25% {
+    background-position: 50% 100%;
+    transform: rotate(5deg) scale(1.1);
+  }
+  50% {
+    background-position: 100% 50%;
+    transform: rotate(-3deg) scale(0.95);
+  }
+  75% {
+    background-position: 50% 0%;
+    transform: rotate(3deg) scale(1.05);
+  }
+  100% {
+    background-position: 0% 50%;
+    transform: rotate(-5deg) scale(0.9);
+  }
+}
+
+@utility animate-aurora {
+  animation: aurora 8s ease-in-out infinite alternate;
+}
+
+@keyframes shine {
+  0% {
+    background-position: 0% 0%;
+  }
+  50% {
+    background-position: 100% 100%;
+  }
+  to {
+    background-position: 0% 0%;
+  }
+}
+
+@utility animate-shine {
+  animation: shine var(--duration, 14s) infinite linear;
+}
+
