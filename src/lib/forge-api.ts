@@ -44,6 +44,8 @@ export type FleetStats = {
   totalBlocks: number;
   totalOrphaned: number;
   uptimeSeconds: number;
+  /** Distinct physical miners across all coins — see fetchFleetStats. */
+  totalWorkers: number;
 };
 
 type CoinStatus = {
@@ -354,12 +356,37 @@ export async function fetchFleetStats(): Promise<FleetStats | null> {
     totalBlocks += s?.pool?.blocks_found ?? 0;
     totalOrphaned += s?.pool?.blocks_orphaned ?? 0;
   }
+  // Distinct workers, not the sum of per-coin worker_count. A miner bonded to
+  // several coins through Nexus Mesh holds a session on each — one active, the
+  // rest warm standbys — so summing counts the same hardware once per coin. Each
+  // session authorizes as <coin-payout-address>.<workerName>, so the suffix is
+  // what identifies the machine. Per-coin counts stay as they are: a warm session
+  // really is connected to that coin.
+  let totalWorkers = 0;
+  try {
+    const minersResp = await fetchJSON<{ miners?: Record<string, Array<{ worker_name?: string }>> }>(
+      "/api/engine/miners",
+    );
+    const names = new Set<string>();
+    for (const list of Object.values(minersResp?.miners ?? {})) {
+      for (const m of list ?? []) {
+        const full = m?.worker_name ?? "";
+        const short = full.includes(".") ? full.slice(full.lastIndexOf(".") + 1) : full;
+        if (short) names.add(short);
+      }
+    }
+    totalWorkers = names.size;
+  } catch {
+    /* leave at 0; the pill falls back to the per-coin sum */
+  }
+
   return {
     totalSharesAccepted,
     totalSharesRejected,
     totalBlocks,
     totalOrphaned,
     uptimeSeconds: stats.uptime_seconds ?? 0,
+    totalWorkers,
   };
 }
 

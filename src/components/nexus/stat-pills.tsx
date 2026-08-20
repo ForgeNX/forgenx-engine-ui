@@ -50,7 +50,9 @@ function fmtUptime(sec: number): string {
 export function StatPills({ apps, fleet }: { apps: ForgeApp[]; fleet: FleetStats | null }) {
   const online = apps.filter((a) => a.online);
   const totalHs = apps.reduce((sum, a) => sum + parseHashrateToHs(a.hashrate), 0);
-  const totalWorkers = apps.reduce((sum, a) => sum + a.miners, 0);
+  // fleet.totalWorkers counts distinct hardware; the per-app sum double-counts a
+  // mesh worker bonded to several coins. Fall back to the sum if it is unavailable.
+  const totalWorkers = fleet?.totalWorkers || apps.reduce((sum, a) => sum + a.miners, 0);
   const sharesAccepted = fleet?.totalSharesAccepted ?? 0;
   const sharesRejected = fleet?.totalSharesRejected ?? 0;
   const efficiency =
