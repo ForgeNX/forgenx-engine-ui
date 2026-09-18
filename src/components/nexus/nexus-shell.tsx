@@ -8,6 +8,7 @@ import { NodeStatus } from "./node-status";
 import { LogsPanel } from "./logs-panel";
 import { InformationPanel } from "./information-panel";
 import { MeshPanel } from "./mesh-panel";
+import { MeshDefault } from "./mesh-default";
 import { EngineControls } from "./engine-controls";
 import { SettingsPanel } from "./settings-panel";
 import { StatPills } from "./stat-pills";
@@ -152,7 +153,18 @@ export function NexusShell() {
         ) : tab === "Information" ? (
           <InformationPanel coinCount={apps.length} info={engineInfo} uptime={engineUptime} />
         ) : tab === "Nexus" ? (
-          <MeshPanel mesh={mesh} loading={meshLoading} refresh={refreshMesh} />
+          <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1fr)]">
+            <MeshDefault apps={apps} mesh={mesh} refresh={refreshMesh} />
+            <MeshPanel mesh={mesh} loading={meshLoading} refresh={refreshMesh} />
+            <section className="panel-neon animate-rise flex min-h-[200px] flex-col items-center justify-center p-5 text-center">
+              <p className="text-xs font-semibold tracking-[0.26em] text-muted-foreground uppercase">
+                Reserved
+              </p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Space for rotation and automatic allocation.
+              </p>
+            </section>
+          </div>
         ) : tab === "Settings" ? (
           <SettingsPanel coins={sv2Coins} refresh={refreshSV2} />
         ) : (

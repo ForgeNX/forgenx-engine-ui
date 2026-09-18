@@ -557,6 +557,9 @@ export type MeshStatus = {
   enabled: boolean;
   port: number;
   coins: string[];
+  // The coin a miner with no assignment of its own bonds first. Empty when the
+  // user has not chosen one, in which case the mesh uses its configured order.
+  default_coin: string;
   miners: MeshMiner[];
 };
 
@@ -567,8 +570,28 @@ export async function fetchMeshStatus(): Promise<MeshStatus | null> {
     enabled: Boolean(s.enabled),
     port: s.port ?? 0,
     coins: s.coins ?? [],
+    default_coin: s.default_coin ?? "",
     miners: s.miners ?? [],
   };
+}
+
+// Sets the coin unassigned miners start on. Miners already connected are left
+// alone, so the note says this applies to new and reconnecting ones.
+export async function setMeshDefault(
+  coin: string,
+): Promise<{ ok: boolean; note: string }> {
+  try {
+    const res = await fetch("/api/mesh/default", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ coin }),
+    });
+    if (!res.ok) return { ok: false, note: "request failed" };
+    const j = await res.json();
+    return { ok: Boolean(j.ok), note: j.note ?? "" };
+  } catch {
+    return { ok: false, note: "request failed" };
+  }
 }
 
 // Assigning saves the allocation and, when the miner is connected and bonded to

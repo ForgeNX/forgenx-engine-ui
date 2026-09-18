@@ -70,8 +70,7 @@ export function MeshPanel({
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-4">
-      <section className="panel-neon animate-rise flex flex-col p-6">
+    <section className="panel-neon animate-rise flex flex-col p-5">
         <header className="flex items-center gap-3">
           <Share2 className="size-4 text-neon-cyan" />
           <h2 className="text-xs font-semibold tracking-[0.26em] text-neon-cyan uppercase">Nexus Mesh</h2>
@@ -157,7 +156,6 @@ export function MeshPanel({
             ))
           )}
         </div>
-      </section>
-    </div>
+    </section>
   );
 }
