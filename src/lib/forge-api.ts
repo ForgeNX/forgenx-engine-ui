@@ -537,3 +537,77 @@ export async function fetchCoinSV2List(): Promise<CoinSV2[]> {
   );
   return results;
 }
+
+// ── Nexus Mesh ──────────────────────────────────────────────────────────────
+// A meshed miner points at one port and the relay bonds it to every configured
+// coin, keeping the ones it is not mining warm so it can be switched without
+// reconnecting. /api/mesh/status describes the lot in one call: each worker's
+// active coin, its assignment if the user set one, and assignments whose miner
+// is currently offline — those still apply when it comes back.
+
+export type MeshMiner = {
+  worker: string;
+  active_coin: string;
+  assignment: string;
+  assigned: boolean;
+  connected: boolean;
+};
+
+export type MeshStatus = {
+  enabled: boolean;
+  port: number;
+  coins: string[];
+  miners: MeshMiner[];
+};
+
+export async function fetchMeshStatus(): Promise<MeshStatus | null> {
+  const s = await fetchJSON<MeshStatus>("/api/mesh/status");
+  if (!s) return null;
+  return {
+    enabled: Boolean(s.enabled),
+    port: s.port ?? 0,
+    coins: s.coins ?? [],
+    miners: s.miners ?? [],
+  };
+}
+
+// Assigning saves the allocation and, when the miner is connected and bonded to
+// that coin, moves it straight away. `applied` distinguishes the two so the UI
+// can say "done" rather than "when it next connects"; `note` carries the reason
+// when it could not be applied now.
+export async function assignMeshWorker(
+  worker: string,
+  allocation: string,
+): Promise<{ ok: boolean; applied: boolean; note: string }> {
+  try {
+    const res = await fetch("/api/mesh/assign", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ worker, allocation }),
+    });
+    if (!res.ok) return { ok: false, applied: false, note: "request failed" };
+    const j = await res.json();
+    return { ok: Boolean(j.ok), applied: Boolean(j.applied), note: j.note ?? "" };
+  } catch {
+    return { ok: false, applied: false, note: "request failed" };
+  }
+}
+
+// Clearing returns the miner to the mesh default. It keeps mining whatever it is
+// on until it reconnects, which the note says.
+export async function unassignMeshWorker(
+  worker: string,
+): Promise<{ ok: boolean; note: string }> {
+  try {
+    const res = await fetch("/api/mesh/unassign", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ worker }),
+    });
+    if (!res.ok) return { ok: false, note: "request failed" };
+    const j = await res.json();
+    return { ok: Boolean(j.ok), note: j.note ?? "" };
+  } catch {
+    return { ok: false, note: "request failed" };
+  }
+}

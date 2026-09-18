@@ -7,12 +7,14 @@ import { NodeDetail } from "./node-detail";
 import { NodeStatus } from "./node-status";
 import { LogsPanel } from "./logs-panel";
 import { InformationPanel } from "./information-panel";
+import { MeshPanel } from "./mesh-panel";
 import { EngineControls } from "./engine-controls";
 import { SettingsPanel } from "./settings-panel";
 import { StatPills } from "./stat-pills";
 import { NEXUS_TABS, type NexusTab } from "./nexus-data";
 import { useForgeApps } from "@/hooks/use-forge-apps";
 import { useEngineInfo, useEngineUptime, useCoinSV2List } from "@/hooks/use-engine-meta";
+import { useMeshStatus } from "@/hooks/use-mesh-status";
 
 const TAB_ICONS: Record<NexusTab, typeof Home> = {
   Overview: Home,
@@ -28,6 +30,7 @@ export function NexusShell() {
   const [tab, setTab] = useState<NexusTab>("Overview");
   const { apps, fleet, loading } = useForgeApps();
   const engineInfo = useEngineInfo();
+  const { mesh, loading: meshLoading, refresh: refreshMesh } = useMeshStatus();
   const engineUptime = useEngineUptime();
   const { coins: sv2Coins, refresh: refreshSV2 } = useCoinSV2List();
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -148,6 +151,8 @@ export function NexusShell() {
           </div>
         ) : tab === "Information" ? (
           <InformationPanel coinCount={apps.length} info={engineInfo} uptime={engineUptime} />
+        ) : tab === "Nexus" ? (
+          <MeshPanel mesh={mesh} loading={meshLoading} refresh={refreshMesh} />
         ) : tab === "Settings" ? (
           <SettingsPanel coins={sv2Coins} refresh={refreshSV2} />
         ) : (
