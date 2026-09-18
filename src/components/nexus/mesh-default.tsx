@@ -54,7 +54,9 @@ export function MeshDefault({
           <div className="py-6 text-sm text-muted-foreground">No coin apps installed.</div>
         ) : (
           installed.map((app) => {
-            const sym = app.symbol.toUpperCase();
+            // app.id is the ticker code lowercased (dgb, bch) — app.symbol is the
+            // currency glyph, which matches nothing the mesh knows about.
+            const sym = app.id.toUpperCase();
             const inMesh = meshCoins.includes(sym);
             const isDefault = current === sym;
             return (
@@ -122,7 +124,7 @@ export function MeshDefault({
       </div>
 
       {note && <p className="mt-3 text-[0.7rem] text-muted-foreground">{note}</p>}
-      {installed.some((a) => !meshCoins.includes(a.symbol.toUpperCase())) && (
+      {installed.some((a) => !meshCoins.includes(a.id.toUpperCase())) && (
         <p className="mt-3 text-[0.65rem] text-muted-foreground">
           Dimmed coins are installed but not in the mesh's configured coin list, so miners cannot be
           routed to them.
