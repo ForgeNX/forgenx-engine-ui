@@ -561,6 +561,9 @@ export type MeshStatus = {
   // is where it starts, the rest are fallbacks in preference order. Empty when the
   // user has not chosen, in which case the mesh uses its configured order.
   default_order: string[];
+  // How long a full rotation cycle takes for miners split across coins, as a Go
+  // duration string. Empty when unset, in which case the engine uses its default.
+  rotate_interval: string;
   miners: MeshMiner[];
 };
 
@@ -572,8 +575,28 @@ export async function fetchMeshStatus(): Promise<MeshStatus | null> {
     port: s.port ?? 0,
     coins: s.coins ?? [],
     default_order: s.default_order ?? [],
+    rotate_interval: s.rotate_interval ?? "",
     miners: s.miners ?? [],
   };
+}
+
+// Sets how long a full rotation cycle takes for miners split across coins. The
+// engine clamps it to between fifteen minutes and six hours.
+export async function setMeshInterval(
+  interval: string,
+): Promise<{ ok: boolean; note: string }> {
+  try {
+    const res = await fetch("/api/mesh/interval", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ interval }),
+    });
+    if (!res.ok) return { ok: false, note: "request failed" };
+    const j = await res.json();
+    return { ok: Boolean(j.ok), note: j.note ?? "" };
+  } catch {
+    return { ok: false, note: "request failed" };
+  }
 }
 
 // Sets the order unassigned miners bond their coins in. Miners already connected
