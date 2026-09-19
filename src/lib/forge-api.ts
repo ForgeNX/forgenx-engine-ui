@@ -551,7 +551,33 @@ export type MeshMiner = {
   assignment: string;
   assigned: boolean;
   connected: boolean;
+  // The miner's own address and client string, not the relay's — the coin behind
+  // the mesh only ever sees the relay's connection.
+  ip: string;
+  device: string;
+  hashrate_15m: number;
 };
+
+// Parses "DGB:50,BCH:50" into per-coin percentages. An allocation naming a coin
+// the mesh no longer carries is ignored rather than failing the whole string.
+export function parseAllocation(alloc: string): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const pair of (alloc ?? "").split(",")) {
+    const [coin, pct] = pair.split(":");
+    if (!coin) continue;
+    const n = Number(pct);
+    out[coin.trim().toUpperCase()] = Number.isFinite(n) ? n : 0;
+  }
+  return out;
+}
+
+// Renders percentages back into the allocation string the engine stores. Coins
+// at zero are kept so the order and the set of coins stay explicit.
+export function formatAllocation(pcts: Record<string, number>): string {
+  return Object.entries(pcts)
+    .map(([coin, pct]) => `${coin}:${Math.round(pct)}`)
+    .join(",");
+}
 
 export type MeshStatus = {
   enabled: boolean;

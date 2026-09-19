@@ -10,6 +10,7 @@ import { InformationPanel } from "./information-panel";
 import { MeshPanel } from "./mesh-panel";
 import { MeshDefault } from "./mesh-default";
 import { MeshRotation } from "./mesh-rotation";
+import { MeshAllocator } from "./mesh-allocator";
 import { EngineControls } from "./engine-controls";
 import { SettingsPanel } from "./settings-panel";
 import { StatPills } from "./stat-pills";
@@ -33,6 +34,10 @@ export function NexusShell() {
   const { apps, fleet, loading } = useForgeApps();
   const engineInfo = useEngineInfo();
   const { mesh, loading: meshLoading, refresh: refreshMesh } = useMeshStatus();
+  // Which miner the allocator is editing. Held by name rather than by object so
+  // it survives the status poll replacing the list.
+  const [selectedMiner, setSelectedMiner] = useState<string | null>(null);
+  const activeMiner = (mesh?.miners ?? []).find((m) => m.worker === selectedMiner) ?? null;
   const engineUptime = useEngineUptime();
   const { coins: sv2Coins, refresh: refreshSV2 } = useCoinSV2List();
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -156,8 +161,18 @@ export function NexusShell() {
         ) : tab === "Nexus" ? (
           <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1fr)]">
             <MeshDefault apps={apps} mesh={mesh} refresh={refreshMesh} />
-            <MeshPanel mesh={mesh} loading={meshLoading} refresh={refreshMesh} />
-            <MeshRotation mesh={mesh} refresh={refreshMesh} />
+            <MeshPanel
+              apps={apps}
+              mesh={mesh}
+              loading={meshLoading}
+              refresh={refreshMesh}
+              selected={selectedMiner}
+              onSelect={setSelectedMiner}
+            />
+            <div className="flex flex-col gap-4">
+              <MeshAllocator apps={apps} mesh={mesh} miner={activeMiner} refresh={refreshMesh} />
+              <MeshRotation mesh={mesh} refresh={refreshMesh} />
+            </div>
           </div>
         ) : tab === "Settings" ? (
           <SettingsPanel coins={sv2Coins} refresh={refreshSV2} />
