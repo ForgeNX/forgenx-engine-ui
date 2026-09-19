@@ -1,5 +1,6 @@
 import { Share2, Link2Off } from "lucide-react";
-import { parseAllocation, type MeshStatus } from "@/lib/forge-api";
+import { type MeshStatus } from "@/lib/forge-api";
+import { MinerPill } from "./miner-pill";
 import type { ForgeApp } from "./nexus-data";
 
 // One pill per meshed miner. Selecting a pill hands it to the allocator, so this
@@ -73,75 +74,16 @@ export function MeshPanel({
             No miners on the mesh yet. Point one at port {mesh.port} to begin.
           </div>
         ) : (
-          mesh.miners.map((m) => {
-            const isSelected = selected === m.worker;
-            const alloc = parseAllocation(m.assignment);
-            const active = m.active_coin.toUpperCase();
-            return (
-              <button
-                key={m.worker}
-                type="button"
-                onClick={() => onSelect(isSelected ? null : m.worker)}
-                aria-pressed={isSelected}
-                className="rounded-xl border p-4 text-left transition hover:-translate-y-0.5"
-                style={{
-                  borderColor: isSelected ? "var(--neon-cyan)" : "var(--border)",
-                  background: isSelected
-                    ? "color-mix(in oklab, var(--neon-cyan) 7%, transparent)"
-                    : "color-mix(in oklab, var(--secondary) 25%, transparent)",
-                }}
-              >
-                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                  <span className="font-display text-sm font-bold">{m.worker}</span>
-                  {m.connected ? (
-                    <span className="font-mono text-[0.72rem] text-neon-cyan">
-                      {hashrate(m.hashrate_15m)}
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-1.5 text-[0.7rem] text-muted-foreground">
-                      <Link2Off className="size-3" />
-                      offline
-                    </span>
-                  )}
-                  <span className="text-[0.7rem] text-foreground/90">{device(m.device)}</span>
-                  <span className="font-mono text-[0.7rem] text-muted-foreground">{m.ip}</span>
-                </div>
-
-                <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5">
-                  {mesh.coins.map((c) => {
-                    const sym = c.toUpperCase();
-                    const app = appFor(sym);
-                    const share = alloc[sym];
-                    const isActive = active === sym;
-                    return (
-                      <span key={c} className="flex items-center gap-1.5">
-                        <span
-                          className="size-1.5 rounded-full"
-                          style={{
-                            background: isActive ? (app?.color ?? "var(--neon-cyan)") : "var(--muted-foreground)",
-                            boxShadow: isActive ? `0 0 8px ${app?.color ?? "var(--neon-cyan)"}` : undefined,
-                            animation: isActive ? "pulse-glow 2.4s ease-in-out infinite" : undefined,
-                          }}
-                        />
-                        <span
-                          className="text-[0.75rem] font-semibold"
-                          style={{ color: isActive ? (app?.color ?? "var(--foreground)") : "var(--foreground)" }}
-                        >
-                          {app?.ticker ?? sym}
-                        </span>
-                        {m.assigned && share !== undefined && (
-                          <span className="font-mono text-[0.7rem] text-muted-foreground">{share}%</span>
-                        )}
-                      </span>
-                    );
-                  })}
-                  {!m.assigned && (
-                    <span className="text-[0.7rem] text-muted-foreground">following default</span>
-                  )}
-                </div>
-              </button>
-            );
-          })
+          mesh.miners.map((m) => (
+            <MinerPill
+              key={m.worker}
+              apps={apps}
+              coins={mesh.coins}
+              miner={m}
+              selected={selected === m.worker}
+              onSelect={() => onSelect(selected === m.worker ? null : m.worker)}
+            />
+          ))
         )}
       </div>
     </section>

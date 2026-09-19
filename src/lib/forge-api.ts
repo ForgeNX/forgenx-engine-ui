@@ -574,7 +574,13 @@ export function parseAllocation(alloc: string): Record<string, number> {
 // Renders percentages back into the allocation string the engine stores. Coins
 // at zero are kept so the order and the set of coins stay explicit.
 export function formatAllocation(pcts: Record<string, number>): string {
+  // Largest share first, and coins at zero left out entirely. The engine reads a
+  // multi-coin allocation as rotation, so keeping a 0% entry would make a miner
+  // pinned to one node look like one rotating between two — and the order decides
+  // where a rotation starts.
   return Object.entries(pcts)
+    .filter(([, pct]) => Math.round(pct) > 0)
+    .sort((a, b) => b[1] - a[1])
     .map(([coin, pct]) => `${coin}:${Math.round(pct)}`)
     .join(",");
 }
