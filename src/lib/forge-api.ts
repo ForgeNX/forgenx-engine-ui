@@ -557,9 +557,10 @@ export type MeshStatus = {
   enabled: boolean;
   port: number;
   coins: string[];
-  // The coin a miner with no assignment of its own bonds first. Empty when the
-  // user has not chosen one, in which case the mesh uses its configured order.
-  default_coin: string;
+  // The order a miner with no assignment of its own bonds its coins in: the first
+  // is where it starts, the rest are fallbacks in preference order. Empty when the
+  // user has not chosen, in which case the mesh uses its configured order.
+  default_order: string[];
   miners: MeshMiner[];
 };
 
@@ -570,21 +571,21 @@ export async function fetchMeshStatus(): Promise<MeshStatus | null> {
     enabled: Boolean(s.enabled),
     port: s.port ?? 0,
     coins: s.coins ?? [],
-    default_coin: s.default_coin ?? "",
+    default_order: s.default_order ?? [],
     miners: s.miners ?? [],
   };
 }
 
-// Sets the coin unassigned miners start on. Miners already connected are left
-// alone, so the note says this applies to new and reconnecting ones.
+// Sets the order unassigned miners bond their coins in. Miners already connected
+// are left alone, so the note says this applies to new and reconnecting ones.
 export async function setMeshDefault(
-  coin: string,
+  coins: string[],
 ): Promise<{ ok: boolean; note: string }> {
   try {
     const res = await fetch("/api/mesh/default", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ coin }),
+      body: JSON.stringify({ coins }),
     });
     if (!res.ok) return { ok: false, note: "request failed" };
     const j = await res.json();

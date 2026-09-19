@@ -102,7 +102,7 @@ export function NodeStatus({
                   >
                     {app.ticker}
                   </span>
-                  <span className="block truncate text-[0.6rem] text-muted-foreground">{app.chain}</span>
+                  <span className="block truncate text-[0.6rem] text-foreground/90">{app.chain}</span>
                 </span>
               </button>
             );

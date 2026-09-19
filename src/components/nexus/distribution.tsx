@@ -105,7 +105,7 @@ export function HashrateDistribution({
                         </span>
                         <span className="min-w-0">
                           <span className="block truncate text-[0.8rem] font-semibold">{app.ticker}</span>
-                          <span className="block truncate text-[0.62rem] text-muted-foreground">{app.chain}</span>
+                          <span className="block truncate text-[0.62rem] text-foreground/90">{app.chain}</span>
                         </span>
                       </span>
                     </td>

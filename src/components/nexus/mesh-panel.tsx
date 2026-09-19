@@ -63,7 +63,7 @@ export function MeshPanel({
         <p className="font-display text-2xl font-bold tracking-[0.12em] uppercase">Mesh disabled</p>
         <p className="max-w-md text-sm text-muted-foreground">
           Set <span className="font-mono text-[0.78rem] text-neon-cyan">MESH_ENABLED=true</span> to bond one miner
-          to several coins at once, with automatic failover when a coin stops serving.
+          to several nodes at once, with automatic failover when a node goes offline.
         </p>
       </div>
     );
@@ -77,8 +77,9 @@ export function MeshPanel({
         </header>
         <p className="mt-3 text-sm leading-relaxed text-foreground/90">
           Point a miner at <span className="font-mono text-[0.78rem] text-neon-cyan">port {mesh.port}</span> and it
-          bonds to {mesh.coins.join(", ")} together. It mines one and holds the rest warm, so a coin going down moves
-          it across without a reconnect. Assign a miner to pin it to a coin; unassigned miners follow the default.
+          bonds to {mesh.coins.join(", ")} together. It mines one and holds the rest warm, if a node goes offline the
+          miner moves across without a reconnect. Assign a miner to pin it to a node; unassigned miners follow the
+          default.
         </p>
 
         <div className="mt-5 space-y-3">
