@@ -9,13 +9,19 @@ import { setMeshInterval, type MeshStatus } from "@/lib/forge-api";
 //
 // The cycle length is mesh-wide: every rotating miner shares it. Per-miner
 // cadences would be a lot of machinery for a distinction few would want.
+//
+// Cadences are long on purpose. A switch can only be made cleanly when the coin
+// being moved to sends a job, and a coin that does so only on new blocks may be
+// quiet for minutes — so every switch risks losing the work in flight. Switching
+// twice a day serves a payout preference as well as switching every few minutes,
+// with a fraction of the disturbance.
 const CHOICES = [
-  { value: "15m", label: "15 min" },
-  { value: "30m", label: "30 min" },
   { value: "1h", label: "1 hour" },
   { value: "2h", label: "2 hours" },
   { value: "4h", label: "4 hours" },
   { value: "6h", label: "6 hours" },
+  { value: "12h", label: "12 hours" },
+  { value: "24h", label: "24 hours" },
 ];
 
 export function MeshRotation({
@@ -28,7 +34,7 @@ export function MeshRotation({
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
 
-  const current = mesh?.rotate_interval || "1h";
+  const current = mesh?.rotate_interval || "6h";
   const rotating = (mesh?.miners ?? []).filter(
     (m) => m.assignment.includes(",") && m.assigned,
   );
