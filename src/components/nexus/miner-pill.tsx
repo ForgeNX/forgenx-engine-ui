@@ -73,7 +73,7 @@ export function MinerPill({
           : "color-mix(in oklab, var(--secondary) 25%, transparent)",
       }}
     >
-      <div ref={containerRef} className="relative flex items-center gap-4">
+      <div ref={containerRef} className="relative flex items-start gap-4">
         {/* Left: who the miner is. The beam starts here, so it has to sit inside
             the same container the beams measure against. */}
         <div className="z-10 min-w-0 flex-1">
@@ -99,13 +99,17 @@ export function MinerPill({
         </div>
 
         {/* Right: the nodes it routes to. */}
-        <div className="flex shrink-0 flex-col items-start gap-2.5">
+        {/* Top-aligned, and nudged to sit level with the worker name: centring
+            would move a node up or down depending on how many there are, so the
+            beam's endpoint would shift as the allocation changed. */}
+        <div className="mt-0.5 flex shrink-0 flex-col items-start gap-2.5">
           {routed.map((sym, i) => {
             const app = appFor(sym);
             const isActive = active === sym;
             return (
-              <span key={sym} ref={nodeRefs[i]} className="z-10 flex items-center gap-2">
+              <span key={sym} className="z-10 flex items-center gap-2">
                 <span
+                  ref={nodeRefs[i]}
                   className="size-1.5 shrink-0 rounded-full"
                   style={{
                     background: isActive ? (app?.color ?? "var(--neon-cyan)") : "var(--foreground)",
@@ -153,12 +157,12 @@ export function MinerPill({
               // dimmer than the active one, in step with it, so the bright beam
               // reads as where the hashrate actually is.
               repeat={Infinity}
-              // Measured from the node label's centre: stop in front of its
-              // status dot instead of running through the ticker.
-              // Both offsets are measured from the element's centre: start just past
-              // the end of the worker name, stop in front of the node's status dot.
+              // Offsets are from each element's centre. The end anchors on the
+              // status dot rather than the whole label, because the label's width
+              // moves with its ticker and percentage — an offset from that centre
+              // drifts as the allocation changes.
               startXOffset={46}
-              endXOffset={-52}
+              endXOffset={-8}
             />
           );
         })}

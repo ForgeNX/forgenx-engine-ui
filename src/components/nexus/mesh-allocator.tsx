@@ -142,7 +142,7 @@ export function MeshAllocator({
             <div key={sym} className="flex flex-col gap-2">
               <div className="flex items-center gap-2">
                 <span
-                  className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-md text-sm font-bold"
+                  className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-md text-sm font-bold"
                   style={{ color: app?.color }}
                 >
                   {app?.icon ? (
