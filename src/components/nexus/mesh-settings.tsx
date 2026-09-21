@@ -135,7 +135,7 @@ export function MeshSettings() {
           type="button"
           role="switch"
           aria-checked={settings?.include_new ?? false}
-          aria-label="Include newly connected miners in the System Mesh"
+          aria-label="Include newly connected miners in Fleet Balance"
           disabled={!settings}
           onClick={toggleIncludeNew}
           className="relative h-5 w-9 shrink-0 rounded-full border transition disabled:opacity-40"
