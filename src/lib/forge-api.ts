@@ -556,7 +556,46 @@ export type MeshMiner = {
   ip: string;
   device: string;
   hashrate_15m: number;
+  // Where hashrate_15m came from: "miner" (its own API), "mesh" (measured at the
+  // relay from submitted shares) or "coin" (a coin's rolling average).
+  hashrate_source?: string;
+  // From the miner's own API when the LAN scanner has found it; empty/0 otherwise.
+  model?: string;
+  chip?: string;
+  asic_temp?: number;
+  asic_temp_max?: number; // hottest single chip, where the miner reports it
+  vr_temp?: number; // 0 when the miner has no regulator sensor
 };
+
+export type MeshSettings = {
+  network_start: string;
+  network_end: string;
+  include_new: boolean;
+  miners_found: number;
+};
+
+export async function fetchMeshSettings(): Promise<MeshSettings | null> {
+  return fetchJSON<MeshSettings>("/api/mesh/settings");
+}
+
+// Saves whichever settings are given. The engine validates the range and
+// answers with the reason when it rejects one, which is passed back as error.
+export async function saveMeshSettings(
+  patch: Partial<Pick<MeshSettings, "network_start" | "network_end" | "include_new">>,
+): Promise<{ ok: boolean; settings?: MeshSettings; error?: string }> {
+  try {
+    const res = await fetch("/api/mesh/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok) return { ok: false, error: j.error ?? j.message ?? "request failed" };
+    return { ok: true, settings: j as MeshSettings };
+  } catch {
+    return { ok: false, error: "request failed" };
+  }
+}
 
 // Parses "DGB:50,BCH:50" into per-coin percentages. An allocation naming a coin
 // the mesh no longer carries is ignored rather than failing the whole string.

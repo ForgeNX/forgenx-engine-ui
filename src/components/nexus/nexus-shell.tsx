@@ -9,6 +9,7 @@ import { LogsPanel } from "./logs-panel";
 import { InformationPanel } from "./information-panel";
 import { MeshPanel } from "./mesh-panel";
 import { MeshDefault } from "./mesh-default";
+import { MeshSettings } from "./mesh-settings";
 import { MeshRotation } from "./mesh-rotation";
 import { MeshAllocator } from "./mesh-allocator";
 import { EngineControls } from "./engine-controls";
@@ -160,12 +161,14 @@ export function NexusShell() {
           <InformationPanel coinCount={apps.length} info={engineInfo} uptime={engineUptime} />
         ) : tab === "Nexus" ? (
           <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1fr)]">
-            <MeshDefault apps={apps} mesh={mesh} refresh={refreshMesh} />
+            <div className="flex flex-col gap-4">
+              <MeshSettings />
+              <MeshDefault apps={apps} mesh={mesh} refresh={refreshMesh} />
+            </div>
             <MeshPanel
               apps={apps}
               mesh={mesh}
               loading={meshLoading}
-              refresh={refreshMesh}
               selected={selectedMiner}
               onSelect={setSelectedMiner}
             />
