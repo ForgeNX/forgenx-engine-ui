@@ -91,11 +91,20 @@ export function MinerPill({
                 offline
               </span>
             )}
-            <span className="text-[0.7rem] text-foreground/90">{device(miner.device)}</span>
+            <span className="text-[0.7rem] text-foreground/90">{miner.model || device(miner.device)}</span>
           </span>
           <span className="mt-0.5 block font-mono text-[0.7rem] text-muted-foreground">
             {miner.ip}
           </span>
+          {/* From the miner's own API. A regulator reading of zero means the
+              miner has no such sensor, so it shows a dash rather than 0°. */}
+          {(miner.asic_temp ?? 0) > 0 && (
+            <span className="mt-0.5 block font-mono text-[0.7rem] text-foreground/90">
+              ASIC {Math.round(miner.asic_temp ?? 0)}°
+              {(miner.asic_temp_max ?? 0) > 0 && ` / ${Math.round(miner.asic_temp_max ?? 0)}° max`}
+              {" · "}VR {(miner.vr_temp ?? 0) > 0 ? `${Math.round(miner.vr_temp ?? 0)}°` : "—"}
+            </span>
+          )}
         </div>
 
         {/* Right: the nodes it routes to. */}
