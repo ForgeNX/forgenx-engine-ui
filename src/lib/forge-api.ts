@@ -635,6 +635,8 @@ export type MeshStatus = {
   // How long a full rotation cycle takes for miners split across coins, as a Go
   // duration string. Empty when unset, in which case the engine uses its default.
   rotate_interval: string;
+  // The System Mesh's split, e.g. "DGB:60,BCH:40". Empty until set.
+  system_target?: string;
   miners: MeshMiner[];
 };
 
@@ -647,6 +649,7 @@ export async function fetchMeshStatus(): Promise<MeshStatus | null> {
     coins: s.coins ?? [],
     default_order: s.default_order ?? [],
     rotate_interval: s.rotate_interval ?? "",
+    system_target: s.system_target ?? "",
     miners: s.miners ?? [],
   };
 }
@@ -727,5 +730,21 @@ export async function unassignMeshWorker(
     return { ok: Boolean(j.ok), note: j.note ?? "" };
   } catch {
     return { ok: false, note: "request failed" };
+  }
+}
+
+// Sets the System Mesh split. The balancer moves included miners towards it,
+// gradually - it leaves each coin alone while it is within a few points.
+export async function setMeshSystemTarget(target: string): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const res = await fetch("/api/mesh/system", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ target }),
+    });
+    const j = await res.json().catch(() => ({}));
+    return res.ok ? { ok: true } : { ok: false, error: j.error ?? "request failed" };
+  } catch {
+    return { ok: false, error: "request failed" };
   }
 }

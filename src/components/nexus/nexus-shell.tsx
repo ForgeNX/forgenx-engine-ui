@@ -167,13 +167,14 @@ export function NexusShell() {
             </div>
             <MeshPanel
               apps={apps}
+              refresh={refreshMesh}
               mesh={mesh}
               loading={meshLoading}
               selected={selectedMiner}
               onSelect={setSelectedMiner}
             />
             <div className="flex flex-col gap-4">
-              <MeshAllocator apps={apps} mesh={mesh} miner={activeMiner} refresh={refreshMesh} />
+              <MeshAllocator apps={apps} mesh={mesh} miner={activeMiner} system={selectedMiner === "__system__"} refresh={refreshMesh} />
               <MeshRotation mesh={mesh} refresh={refreshMesh} />
             </div>
           </div>

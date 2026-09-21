@@ -1,6 +1,7 @@
 import { Share2, Link2Off } from "lucide-react";
-import { type MeshStatus } from "@/lib/forge-api";
+import { assignMeshWorker, type MeshStatus } from "@/lib/forge-api";
 import { MinerPill } from "./miner-pill";
+import { SystemMeshPill, SYSTEM_ID } from "./system-mesh-pill";
 import type { ForgeApp } from "./nexus-data";
 
 // One pill per meshed miner. Selecting a pill hands it to the allocator, so this
@@ -11,12 +12,14 @@ export function MeshPanel({
   loading,
   selected,
   onSelect,
+  refresh,
 }: {
   apps: ForgeApp[];
   mesh: MeshStatus | null;
   loading: boolean;
   selected: string | null;
   onSelect: (worker: string | null) => void;
+  refresh: () => void;
 }) {
   const appFor = (sym: string) => apps.find((a) => a.id.toUpperCase() === sym.toUpperCase());
 
@@ -69,6 +72,12 @@ export function MeshPanel({
       </p>
 
       <div className="mt-4 flex flex-col gap-3">
+        <SystemMeshPill
+          apps={apps}
+          mesh={mesh}
+          selected={selected === SYSTEM_ID}
+          onSelect={() => onSelect(selected === SYSTEM_ID ? null : SYSTEM_ID)}
+        />
         {mesh.miners.length === 0 ? (
           <div className="py-6 text-sm text-muted-foreground">
             No miners on the mesh yet. Point one at port {mesh.port} to begin.
@@ -82,6 +91,13 @@ export function MeshPanel({
               miner={m}
               selected={selected === m.worker}
               onSelect={() => onSelect(selected === m.worker ? null : m.worker)}
+              onToggleSystem={async (on) => {
+                // Out of the System Mesh, a miner is pinned where it is rather
+                // than jumping anywhere.
+                const here = (m.active_coin || mesh.coins[0] || "").toUpperCase();
+                await assignMeshWorker(m.worker, on ? "AUTO" : `${here}:100`);
+                refresh();
+              }}
             />
           ))
         )}

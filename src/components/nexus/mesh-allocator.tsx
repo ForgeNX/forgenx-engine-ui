@@ -4,26 +4,32 @@ import {
   assignMeshWorker,
   formatAllocation,
   parseAllocation,
+  setMeshSystemTarget,
   type MeshMiner,
   type MeshStatus,
 } from "@/lib/forge-api";
 import type { ForgeApp } from "./nexus-data";
 
-// Allocating a miner across nodes. The percentages always total 100, so moving
-// one slider has to take the difference from somewhere: it comes out of the
-// unpinned nodes, in proportion to what they already hold. A node the user has
-// pinned keeps its share and is excluded from that redistribution, which means a
-// slider can only move as far as the unpinned nodes can absorb — with everything
-// else pinned it cannot move at all, and unpinning is how you make room.
+// Allocating hashrate across nodes, for one miner or for the whole System Mesh.
+// The percentages always total 100, so moving one slider takes the difference
+// from the unpinned nodes in proportion to what they hold. A pinned node keeps
+// its share and is left out of that, so a slider only moves as far as the rest
+// can absorb - with everything else pinned it cannot move, and unpinning makes
+// room.
+//
+// A miner in the System Mesh is locked here: the balancer places it, and
+// editing it by hand would only be undone on the next round.
 export function MeshAllocator({
   apps,
   mesh,
   miner,
+  system = false,
   refresh,
 }: {
   apps: ForgeApp[];
   mesh: MeshStatus | null;
   miner: MeshMiner | null;
+  system?: boolean;
   refresh: () => void;
 }) {
   const coins = (mesh?.coins ?? []).map((c) => c.toUpperCase());
@@ -32,31 +38,35 @@ export function MeshAllocator({
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
 
-  // Re-seed when the selected miner changes. Pins are a working state for this
-  // editing session, not something the engine stores, so they reset with it.
+  const locked = !system && miner?.assignment === "AUTO";
+  const source = system ? mesh?.system_target ?? "" : miner?.assignment ?? "";
+
   useEffect(() => {
-    if (!miner) return;
-    const existing = parseAllocation(miner.assignment);
+    if (!system && !miner) return;
+    const existing = parseAllocation(source);
     const seeded: Record<string, number> = {};
     for (const c of coins) seeded[c] = existing[c] ?? 0;
-    // An unassigned miner has nothing stored; show it as everything on the coin
-    // it is actually mining rather than as a blank slate.
-    if (!miner.assigned && miner.active_coin) {
-      for (const c of coins) seeded[c] = c === miner.active_coin.toUpperCase() ? 100 : 0;
+    const total = Object.values(seeded).reduce((s, n) => s + n, 0);
+    if (total === 0) {
+      if (system) {
+        // No target yet: start from an even split.
+        const even = Math.floor(100 / Math.max(coins.length, 1));
+        coins.forEach((c, i) => (seeded[c] = i === 0 ? 100 - even * (coins.length - 1) : even));
+      } else if (miner?.active_coin) {
+        for (const c of coins) seeded[c] = c === miner.active_coin.toUpperCase() ? 100 : 0;
+      }
     }
     setPcts(seeded);
     setPinned({});
     setNote("");
-  }, [miner?.worker, miner?.assignment, mesh?.coins.join(",")]);
+  }, [system, miner?.worker, source, mesh?.coins.join(",")]);
 
-  if (!miner) {
+  if (!system && !miner) {
     return (
       <section className="panel-neon animate-rise flex min-h-[200px] flex-col items-center justify-center p-5 text-center">
-        <p className="text-xs font-semibold tracking-[0.26em] text-muted-foreground uppercase">
-          No miner selected
-        </p>
+        <p className="text-xs font-semibold tracking-[0.26em] text-muted-foreground uppercase">No miner selected</p>
         <p className="mt-2 text-sm text-muted-foreground">
-          Pick a miner to set how its hashrate is shared across nodes.
+          Pick a miner, or the System Mesh, to set how hashrate is shared across nodes.
         </p>
       </section>
     );
@@ -65,7 +75,6 @@ export function MeshAllocator({
   const appFor = (sym: string) => apps.find((a) => a.id.toUpperCase() === sym);
   const total = Object.values(pcts).reduce((s, n) => s + n, 0);
 
-  // How much the unpinned, non-dragged nodes can give up or take on.
   const headroom = (coin: string) => {
     const others = coins.filter((c) => c !== coin && !pinned[c]);
     const givable = others.reduce((s, c) => s + (pcts[c] ?? 0), 0);
@@ -78,13 +87,9 @@ export function MeshAllocator({
     const next = Math.max(min, Math.min(max, Math.round(value)));
     const delta = next - (pcts[coin] ?? 0);
     if (delta === 0) return;
-
     const others = coins.filter((c) => c !== coin && !pinned[c]);
     const pool = others.reduce((s, c) => s + (pcts[c] ?? 0), 0);
     const updated = { ...pcts, [coin]: next };
-
-    // Take the difference proportionally, so a node already carrying more gives
-    // up more. When they are all at zero and we are giving back, spread evenly.
     let remaining = -delta;
     others.forEach((c, i) => {
       const last = i === others.length - 1;
@@ -96,22 +101,27 @@ export function MeshAllocator({
     setPcts(updated);
   };
 
+  const save = async (values?: Record<string, number>) => {
+    const body = values ?? pcts;
+    setBusy(true);
+    if (system) {
+      const res = await setMeshSystemTarget(formatAllocation(body));
+      setNote(res.ok ? "Target saved - the balancer will move miners gradually" : res.error ?? "could not save");
+    } else if (miner) {
+      const res = await assignMeshWorker(miner.worker, formatAllocation(body));
+      setNote(res.applied ? "Applied" : res.note);
+    }
+    setTimeout(() => setNote(""), 6000);
+    setBusy(false);
+    refresh();
+  };
+
   const solo = (coin: string) => {
     const next: Record<string, number> = {};
     for (const c of coins) next[c] = c === coin ? 100 : 0;
     setPcts(next);
     setPinned({});
     save(next);
-  };
-
-  const save = async (values?: Record<string, number>) => {
-    const body = values ?? pcts;
-    setBusy(true);
-    const res = await assignMeshWorker(miner.worker, formatAllocation(body));
-    setNote(res.applied ? "Applied" : res.note);
-    setTimeout(() => setNote(""), 6000);
-    setBusy(false);
-    refresh();
   };
 
   return (
@@ -122,34 +132,34 @@ export function MeshAllocator({
           style={{ background: "var(--neon-cyan)", boxShadow: "0 0 12px var(--neon-cyan)" }}
         />
         <h2 className="text-xs font-semibold tracking-[0.26em] text-neon-cyan uppercase">
-          {miner.worker}
+          {system ? "System Mesh" : miner?.worker}
         </h2>
       </header>
 
       <p className="mt-3 text-sm leading-relaxed text-foreground/90">
-        How this miner's time is shared across nodes. Pin a node to hold its share while you adjust
-        the others.
+        {system
+          ? "The share of the included miners' combined hashrate each node gets. Whole miners are moved between nodes to get close to it, a few at a time."
+          : locked
+            ? "This miner is in the System Mesh, which decides where it mines. Take it out of the System Mesh to set its allocation here."
+            : "How this miner's time is shared across nodes. Pin a node to hold its share while you adjust the others."}
       </p>
 
-      <div className="mt-4 flex flex-col gap-4">
+      <div className="mt-4 flex flex-col gap-4" style={{ opacity: locked ? 0.45 : 1 }}>
         {coins.map((sym) => {
           const app = appFor(sym);
           const pct = pcts[sym] ?? 0;
           const isPinned = Boolean(pinned[sym]);
           const { min, max } = headroom(sym);
           const fixed = coins.length < 2 || min === max;
+          const colour = app?.color ?? "var(--neon-cyan)";
           return (
             <div key={sym} className="flex flex-col gap-2">
               <div className="flex items-center gap-2">
                 <span
                   className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-md text-sm font-bold"
-                  style={{ color: app?.color }}
+                  style={{ color: colour }}
                 >
-                  {app?.icon ? (
-                    <img src={app.icon} alt={app.ticker} className="size-full object-contain" />
-                  ) : (
-                    sym
-                  )}
+                  {app?.icon ? <img src={app.icon} alt={app.ticker} className="size-full object-contain" /> : sym}
                 </span>
                 <span
                   className="size-1.5 shrink-0 rounded-full"
@@ -163,20 +173,18 @@ export function MeshAllocator({
                   <span className="font-display block truncate text-sm font-semibold tracking-wide">
                     {app?.ticker ?? sym}
                   </span>
-                  <span className="block truncate text-[0.6rem] text-foreground/90">
-                    {app?.chain ?? ""}
-                  </span>
+                  <span className="block truncate text-[0.6rem] text-foreground/90">{app?.chain ?? ""}</span>
                 </span>
                 <span
                   className="w-10 shrink-0 text-right font-mono text-sm font-semibold"
-                  style={{ color: pct > 0 ? app?.color : "var(--muted-foreground)" }}
+                  style={{ color: pct > 0 ? colour : "var(--muted-foreground)" }}
                 >
                   {pct}%
                 </span>
                 <button
                   type="button"
                   aria-pressed={isPinned}
-                  disabled={busy}
+                  disabled={busy || locked}
                   onClick={() => setPinned((p) => ({ ...p, [sym]: !p[sym] }))}
                   className="flex shrink-0 items-center gap-1 rounded-lg border px-2 py-1 text-[0.65rem] font-semibold transition disabled:opacity-40"
                   style={{
@@ -190,31 +198,30 @@ export function MeshAllocator({
                 <button
                   type="button"
                   aria-pressed={pct === 100}
-                  disabled={busy || pct === 100}
+                  disabled={busy || locked || pct === 100}
                   onClick={() => solo(sym)}
                   className="shrink-0 rounded-lg border px-2 py-1 text-[0.65rem] font-semibold transition disabled:opacity-100"
                   style={
                     pct === 100
                       ? {
-                          borderColor: app?.color,
+                          borderColor: colour,
                           color: "var(--foreground)",
-                          background: `color-mix(in oklab, ${app?.color ?? "var(--neon-cyan)"} 15%, transparent)`,
-                          boxShadow: `0 0 10px color-mix(in oklab, ${app?.color ?? "var(--neon-cyan)"} 45%, transparent)`,
+                          background: `color-mix(in oklab, ${colour} 15%, transparent)`,
+                          boxShadow: `0 0 10px color-mix(in oklab, ${colour} 45%, transparent)`,
                         }
-                      : { borderColor: "var(--border)", color: "var(--foreground)" }
+                      : { borderColor: "var(--border)", color: "var(--foreground)", opacity: locked ? 0.4 : 1 }
                   }
                 >
                   Solo
                 </button>
               </div>
-
               <input
                 type="range"
                 min={0}
                 max={100}
                 step={1}
                 value={pct}
-                disabled={busy || isPinned || fixed}
+                disabled={busy || locked || isPinned || fixed}
                 onChange={(e) => setCoin(sym, Number(e.target.value))}
                 onMouseUp={() => save()}
                 onTouchEnd={() => save()}
@@ -228,8 +235,7 @@ export function MeshAllocator({
       </div>
 
       <p className="mt-4 text-[0.7rem] text-foreground/90">
-        Total {Math.round(total)}%
-        {note ? ` — ${note}` : ""}
+        Total {Math.round(total)}%{note ? ` - ${note}` : ""}
       </p>
     </section>
   );

@@ -17,12 +17,14 @@ export function MinerPill({
   miner,
   selected,
   onSelect,
+  onToggleSystem,
 }: {
   apps: ForgeApp[];
   coins: string[];
   miner: MeshMiner;
   selected: boolean;
   onSelect: () => void;
+  onToggleSystem?: (on: boolean) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const fromRef = useRef<HTMLSpanElement>(null);
@@ -61,11 +63,18 @@ export function MinerPill({
   };
 
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onSelect}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSelect();
+        }
+      }}
       aria-pressed={selected}
-      className="rounded-xl border p-4 text-left transition hover:-translate-y-0.5"
+      className="cursor-pointer rounded-xl border p-4 text-left transition hover:-translate-y-0.5"
       style={{
         borderColor: selected ? "var(--neon-cyan)" : "var(--border)",
         background: selected
@@ -103,6 +112,37 @@ export function MinerPill({
               ASIC {Math.round(miner.asic_temp ?? 0)}°
               {(miner.asic_temp_max ?? 0) > 0 && ` / ${Math.round(miner.asic_temp_max ?? 0)}° max`}
               {" · "}VR {(miner.vr_temp ?? 0) > 0 ? `${Math.round(miner.vr_temp ?? 0)}°` : "—"}
+            </span>
+          )}
+          {onToggleSystem && (
+            <span className="mt-2 flex items-center gap-2">
+              <button
+                type="button"
+                role="switch"
+                aria-checked={miner.assignment === "AUTO"}
+                aria-label={`Include ${miner.worker} in the System Mesh`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleSystem(miner.assignment !== "AUTO");
+                }}
+                className="relative h-4 w-7 shrink-0 rounded-full border transition"
+                style={{
+                  borderColor: miner.assignment === "AUTO" ? "var(--neon-cyan)" : "var(--border)",
+                  background:
+                    miner.assignment === "AUTO"
+                      ? "color-mix(in oklab, var(--neon-cyan) 25%, transparent)"
+                      : "var(--secondary)",
+                }}
+              >
+                <span
+                  className="absolute top-1/2 size-2.5 -translate-y-1/2 rounded-full transition-all"
+                  style={{
+                    left: miner.assignment === "AUTO" ? "calc(100% - 0.8rem)" : "0.15rem",
+                    background: miner.assignment === "AUTO" ? "var(--neon-cyan)" : "var(--muted-foreground)",
+                  }}
+                />
+              </button>
+              <span className="text-[0.68rem] text-foreground/90">System Mesh</span>
             </span>
           )}
         </div>
@@ -176,6 +216,6 @@ export function MinerPill({
           );
         })}
       </div>
-    </button>
+    </div>
   );
 }
