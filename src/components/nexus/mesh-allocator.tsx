@@ -66,7 +66,7 @@ export function MeshAllocator({
       <section className="panel-neon animate-rise flex min-h-[200px] flex-col items-center justify-center p-5 text-center">
         <p className="text-xs font-semibold tracking-[0.26em] text-muted-foreground uppercase">No miner selected</p>
         <p className="mt-2 text-sm text-muted-foreground">
-          Pick a miner, or the System Mesh, to set how hashrate is shared across nodes.
+          Pick a miner, or Fleet Balance, to set how hashrate is shared across nodes.
         </p>
       </section>
     );
@@ -132,7 +132,7 @@ export function MeshAllocator({
           style={{ background: "var(--neon-cyan)", boxShadow: "0 0 12px var(--neon-cyan)" }}
         />
         <h2 className="text-xs font-semibold tracking-[0.26em] text-neon-cyan uppercase">
-          {system ? "System Mesh" : miner?.worker}
+          {system ? "Fleet Balance" : miner?.worker}
         </h2>
       </header>
 
@@ -140,7 +140,7 @@ export function MeshAllocator({
         {system
           ? "The share of the included miners' combined hashrate each node gets. Whole miners are moved between nodes to get close to it, a few at a time."
           : locked
-            ? "This miner is in the System Mesh, which decides where it mines. Take it out of the System Mesh to set its allocation here."
+            ? "This miner is in Fleet Balance, which decides where it mines. Take it out of Fleet Balance to set its allocation here."
             : "How this miner's time is shared across nodes. Pin a node to hold its share while you adjust the others."}
       </p>
 

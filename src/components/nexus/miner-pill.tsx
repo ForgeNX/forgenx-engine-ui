@@ -45,9 +45,12 @@ export function MinerPill({
 
   // Nodes this miner actually routes to: its allocation, or the one it is mining
   // when it has no allocation of its own.
+  // A System Mesh miner's allocation is just "AUTO": the balancer decides the
+  // coin, so the beam goes to wherever it has actually put the miner.
+  const isAuto = miner.assignment === "AUTO";
   const routed = coins
     .map((c) => c.toUpperCase())
-    .filter((sym) => (miner.assigned ? (alloc[sym] ?? 0) > 0 : sym === active))
+    .filter((sym) => (miner.assigned && !isAuto ? (alloc[sym] ?? 0) > 0 : sym === active))
     .slice(0, nodeRefs.length);
 
   const hashrate = (th: number) =>
@@ -120,7 +123,7 @@ export function MinerPill({
                 type="button"
                 role="switch"
                 aria-checked={miner.assignment === "AUTO"}
-                aria-label={`Include ${miner.worker} in the System Mesh`}
+                aria-label={`Include ${miner.worker} in Fleet Balance`}
                 onClick={(e) => {
                   e.stopPropagation();
                   onToggleSystem(miner.assignment !== "AUTO");
@@ -142,7 +145,7 @@ export function MinerPill({
                   }}
                 />
               </button>
-              <span className="text-[0.68rem] text-foreground/90">System Mesh</span>
+              <span className="text-[0.68rem] text-foreground/90">Fleet Balance</span>
             </span>
           )}
         </div>
@@ -174,7 +177,7 @@ export function MinerPill({
                 </span>
                 {miner.assigned && (
                   <span className="font-mono text-[0.7rem] text-foreground/90">
-                    {alloc[sym] ?? 0}%
+                    {isAuto ? "Fleet" : `${alloc[sym] ?? 0}%`}
                   </span>
                 )}
               </span>

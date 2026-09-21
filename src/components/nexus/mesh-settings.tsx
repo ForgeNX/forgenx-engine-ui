@@ -128,7 +128,7 @@ export function MeshSettings() {
             Include new miners
           </p>
           <p className="mt-1 text-[0.72rem] leading-relaxed text-foreground/90">
-            A newly connected miner joins the System Mesh allocation automatically.
+            A newly connected miner joins Fleet Balance automatically.
           </p>
         </div>
         <button

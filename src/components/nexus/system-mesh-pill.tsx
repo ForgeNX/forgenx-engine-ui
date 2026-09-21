@@ -1,7 +1,7 @@
 import { parseAllocation, type MeshStatus } from "@/lib/forge-api";
 import type { ForgeApp } from "./nexus-data";
 
-// The System Mesh, shown as a miner of its own at the top of the list: every
+// Fleet Balance, shown as a miner of its own at the top of the list: every
 // included miner combined. Each node shows its target share beside the share it
 // is actually getting, so it's visible how close the balancer has it.
 export const SYSTEM_ID = "__system__";
@@ -41,7 +41,7 @@ export function SystemMeshPill({
       }}
     >
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <span className="font-display text-sm font-bold text-neon-cyan">System Mesh</span>
+        <span className="font-display text-sm font-bold text-neon-cyan">Fleet Balance</span>
         <span className="font-mono text-[0.72rem] text-foreground/90">
           {included.length} miner{included.length === 1 ? "" : "s"} · {total.toFixed(2)} TH/s
         </span>
