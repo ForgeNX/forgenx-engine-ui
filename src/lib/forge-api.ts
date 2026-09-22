@@ -570,6 +570,8 @@ export type MeshMiner = {
   shares_accepted?: number;
   shares_rejected?: number;
   shares_stale?: number;
+  difficulty?: number; // current, on the coin it is mining
+  next_difficulty?: number; // a change waiting for the next block; 0 when none
 };
 
 export type MeshSettings = {

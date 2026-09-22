@@ -11,6 +11,17 @@ import type { ForgeApp } from "./nexus-data";
 //
 // Its own component so each pill owns its refs — beams need a ref per endpoint,
 // and hooks cannot be called in a loop.
+// 115806 -> "115.8K".
+function compactDiff(n: number): string {
+  const units = ["", "K", "M", "G", "T"];
+  let i = 0;
+  while (n >= 1000 && i < units.length - 1) {
+    n /= 1000;
+    i++;
+  }
+  return `${n.toFixed(i === 0 ? 0 : 1)}${units[i]}`;
+}
+
 export function MinerPill({
   apps,
   coins,
@@ -107,6 +118,16 @@ export function MinerPill({
             {(miner.asic_temp_max ?? 0) > 0 && ` / ${Math.round(miner.asic_temp_max ?? 0)}° max`}
             {"  -  "}VR: {(miner.vr_temp ?? 0) > 0 ? `${Math.round(miner.vr_temp ?? 0)}°` : "—"}
           </span>
+          {(miner.difficulty ?? 0) > 0 && (
+            <span className="mt-0.5 block whitespace-pre-wrap font-mono text-[0.7rem] text-foreground/90">
+              Difficulty (current): {compactDiff(miner.difficulty ?? 0)}
+              {(miner.next_difficulty ?? 0) > 0 && (
+                <>
+                  {"  -  "}Next: <span className="text-neon-gold">{compactDiff(miner.next_difficulty ?? 0)}</span>
+                </>
+              )}
+            </span>
+          )}
           <span className="mt-1 flex flex-wrap items-baseline gap-2 font-mono text-[0.72rem]">
             <span className="text-[0.6rem] tracking-[0.14em] text-foreground/90 uppercase">Shares:</span>
             <span style={{ color: "var(--neon-green)" }}>{miner.shares_accepted ?? 0} accepted</span>
