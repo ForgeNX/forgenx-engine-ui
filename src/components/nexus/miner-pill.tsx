@@ -92,62 +92,20 @@ export function MinerPill({
           <span ref={fromRef} className="font-display block w-fit truncate text-sm font-bold">
             {miner.worker}
           </span>
-          <span className="mt-0.5 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+          <span className="mt-0.5 block whitespace-pre-wrap text-[0.7rem] text-foreground/90">
+            Device: {miner.model || device(miner.device) || "unknown"}{"  -  "}IP:{" "}
+            <span className="font-mono text-muted-foreground">{miner.ip || "—"}</span>
+          </span>
+          <span className="mt-0.5 block whitespace-pre-wrap font-mono text-[0.7rem] text-foreground/90">
             {miner.connected ? (
-              <span className="font-mono text-[0.72rem] text-neon-cyan">
-                {hashrate(miner.hashrate_15m)}
-              </span>
+              <span className="text-[0.72rem] text-neon-cyan">{hashrate(miner.hashrate_15m)}</span>
             ) : (
-              <span className="flex items-center gap-1.5 text-[0.7rem] text-muted-foreground">
-                <Link2Off className="size-3" />
-                offline
-              </span>
+              <span className="text-muted-foreground">offline</span>
             )}
-            <span className="text-[0.7rem] text-foreground/90">{miner.model || device(miner.device)}</span>
+            {"  -  "}Asic: {(miner.asic_temp ?? 0) > 0 ? `${Math.round(miner.asic_temp ?? 0)}°` : "—"}
+            {(miner.asic_temp_max ?? 0) > 0 && ` / ${Math.round(miner.asic_temp_max ?? 0)}° max`}
+            {"  -  "}VR: {(miner.vr_temp ?? 0) > 0 ? `${Math.round(miner.vr_temp ?? 0)}°` : "—"}
           </span>
-          <span className="mt-0.5 block font-mono text-[0.7rem] text-muted-foreground">
-            {miner.ip}
-          </span>
-          {/* From the miner's own API. A regulator reading of zero means the
-              miner has no such sensor, so it shows a dash rather than 0°. */}
-          {(miner.asic_temp ?? 0) > 0 && (
-            <span className="mt-0.5 block font-mono text-[0.7rem] text-foreground/90">
-              ASIC {Math.round(miner.asic_temp ?? 0)}°
-              {(miner.asic_temp_max ?? 0) > 0 && ` / ${Math.round(miner.asic_temp_max ?? 0)}° max`}
-              {" · "}VR {(miner.vr_temp ?? 0) > 0 ? `${Math.round(miner.vr_temp ?? 0)}°` : "—"}
-            </span>
-          )}
-          {onToggleSystem && (
-            <span className="mt-2 flex items-center gap-2">
-              <button
-                type="button"
-                role="switch"
-                aria-checked={miner.assignment === "AUTO"}
-                aria-label={`Include ${miner.worker} in Fleet Balance`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onToggleSystem(miner.assignment !== "AUTO");
-                }}
-                className="relative h-4 w-7 shrink-0 rounded-full border transition"
-                style={{
-                  borderColor: miner.assignment === "AUTO" ? "var(--neon-cyan)" : "var(--border)",
-                  background:
-                    miner.assignment === "AUTO"
-                      ? "color-mix(in oklab, var(--neon-cyan) 25%, transparent)"
-                      : "var(--secondary)",
-                }}
-              >
-                <span
-                  className="absolute top-1/2 size-2.5 -translate-y-1/2 rounded-full transition-all"
-                  style={{
-                    left: miner.assignment === "AUTO" ? "calc(100% - 0.8rem)" : "0.15rem",
-                    background: miner.assignment === "AUTO" ? "var(--neon-cyan)" : "var(--muted-foreground)",
-                  }}
-                />
-              </button>
-              <span className="text-[0.68rem] text-foreground/90">Fleet Balance</span>
-            </span>
-          )}
         </div>
 
         {/* Right: the nodes it routes to. */}
@@ -219,6 +177,51 @@ export function MinerPill({
           );
         })}
       </div>
+
+      <div className="mt-3 flex flex-wrap items-baseline justify-center gap-2 font-mono text-[0.72rem]">
+        <span className="text-[0.6rem] tracking-[0.14em] text-foreground/90 uppercase">Shares</span>
+        <span style={{ color: "var(--neon-green)" }}>{miner.shares_accepted ?? 0} accepted</span>
+        <span className="text-foreground/50">/</span>
+        <span style={{ color: (miner.shares_rejected ?? 0) > 0 ? "#ff0080" : "var(--foreground)" }}>
+          {miner.shares_rejected ?? 0} rejected
+        </span>
+        <span className="text-foreground/50">/</span>
+        <span style={{ color: (miner.shares_stale ?? 0) > 0 ? "var(--neon-gold)" : "var(--foreground)" }}>
+          {miner.shares_stale ?? 0} stale
+        </span>
+      </div>
+
+      {onToggleSystem && (
+        <span className="mt-2 flex items-center gap-2">
+          <button
+            type="button"
+            role="switch"
+            aria-checked={miner.assignment === "AUTO"}
+            aria-label={`Include ${miner.worker} in Fleet Balance`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleSystem(miner.assignment !== "AUTO");
+            }}
+            className="relative h-4 w-7 shrink-0 rounded-full border transition"
+            style={{
+              borderColor: miner.assignment === "AUTO" ? "var(--neon-cyan)" : "var(--border)",
+              background:
+                miner.assignment === "AUTO"
+                  ? "color-mix(in oklab, var(--neon-cyan) 25%, transparent)"
+                  : "var(--secondary)",
+            }}
+          >
+            <span
+              className="absolute top-1/2 size-2.5 -translate-y-1/2 rounded-full transition-all"
+              style={{
+                left: miner.assignment === "AUTO" ? "calc(100% - 0.8rem)" : "0.15rem",
+                background: miner.assignment === "AUTO" ? "var(--neon-cyan)" : "var(--muted-foreground)",
+              }}
+            />
+          </button>
+          <span className="text-[0.68rem] text-foreground/90">Fleet Balance</span>
+        </span>
+      )}
     </div>
   );
 }

@@ -566,6 +566,10 @@ export type MeshMiner = {
   asic_temp_max?: number; // hottest single chip, where the miner reports it
   vr_temp?: number; // 0 when the miner has no regulator sensor
   pins?: string[]; // coins pinned in the allocator, saved on the engine
+  // Share outcomes this session, counted at the relay.
+  shares_accepted?: number;
+  shares_rejected?: number;
+  shares_stale?: number;
 };
 
 export type MeshSettings = {
