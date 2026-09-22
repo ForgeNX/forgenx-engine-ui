@@ -9,6 +9,7 @@ import {
 } from "@/lib/forge-api";
 import { MinerPill } from "./miner-pill";
 import { SystemMeshPill, SYSTEM_ID } from "./system-mesh-pill";
+import { MeshOverviewPill } from "./mesh-overview-pill";
 import type { ForgeApp } from "./nexus-data";
 
 // One pill per meshed miner. Selecting a pill hands it to the allocator, so this
@@ -120,6 +121,7 @@ export function MeshPanel({
       </p>
 
       <div className="mt-4 flex flex-col gap-3">
+        <MeshOverviewPill apps={apps} overview={mesh.overview} />
         <SystemMeshPill
           apps={apps}
           mesh={mesh}

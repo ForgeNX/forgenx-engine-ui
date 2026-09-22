@@ -640,6 +640,7 @@ export type MeshStatus = {
   // The System Mesh's split, e.g. "DGB:60,BCH:40". Empty until set.
   system_target?: string;
   system_pins?: string[];
+  overview?: MeshOverview;
   miners: MeshMiner[];
 };
 
@@ -654,6 +655,7 @@ export async function fetchMeshStatus(): Promise<MeshStatus | null> {
     rotate_interval: s.rotate_interval ?? "",
     system_target: s.system_target ?? "",
     system_pins: s.system_pins ?? [],
+    overview: s.overview,
     miners: s.miners ?? [],
   };
 }
@@ -791,3 +793,18 @@ export async function fetchFoundMiners(): Promise<FoundMiner[]> {
   const r = await fetchJSON<{ miners: FoundMiner[] }>("/api/mesh/miners");
   return r?.miners ?? [];
 }
+
+// Session totals for the mesh, since the engine last started.
+export type MeshOverview = {
+  since: string;
+  connected: number;
+  total_ths: number;
+  peak_ths: number;
+  best_share: number;
+  blocks: number;
+  accepted: number;
+  rejected: number;
+  stale: number;
+  switches: number;
+  nodes: { coin: string; miners: number; ths: number }[];
+};
