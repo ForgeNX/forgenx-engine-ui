@@ -52,12 +52,11 @@ export function MeshRotation({
     <section className="panel-neon animate-rise flex flex-col p-5">
       <header className="flex items-center gap-3">
         <Timer className="size-4 text-neon-cyan" />
-        <h2 className="text-xs font-semibold tracking-[0.26em] text-neon-cyan uppercase">Rotation</h2>
+        <h2 className="text-xs font-semibold tracking-[0.26em] text-neon-cyan uppercase">Node Rotation</h2>
       </header>
 
       <p className="mt-3 text-sm leading-relaxed text-foreground/90">
-        A miner split across nodes spends a share of each cycle on one, then moves to the next. This
-        is how long a full cycle takes.
+        Miners that are not allocated to the Fleet Balance rotate between nodes. A miner split across nodes spends a share of each cycle on one, then moves to the next. This is how long a full cycle takes. Example. If Node Rotation is set to 2 hours, and you set a miner to 50% node 1 and 50% node 2, it will spend 1 hour mining to node 1 and then 1 hour mining to node 2.
       </p>
 
       <div className="mt-4 flex flex-wrap gap-2">

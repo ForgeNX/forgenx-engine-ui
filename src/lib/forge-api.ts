@@ -766,3 +766,27 @@ export async function setMeshPins(worker: string, coins: string[]): Promise<bool
     return false;
   }
 }
+
+// A miner the LAN scanner found, with its own readings. on_mesh means it is
+// mining through the mesh now; points_at_mesh means its pool setting is the
+// mesh port - a miner can be one without the other.
+export type FoundMiner = {
+  worker: string;
+  host: string;
+  driver: string;
+  model: string;
+  chip: string;
+  hashrate_ths: number;
+  asic_temp: number;
+  asic_temp_max: number;
+  vr_temp: number;
+  pool_url: string;
+  on_mesh: boolean;
+  mesh_coin: string;
+  points_at_mesh: boolean;
+};
+
+export async function fetchFoundMiners(): Promise<FoundMiner[]> {
+  const r = await fetchJSON<{ miners: FoundMiner[] }>("/api/mesh/miners");
+  return r?.miners ?? [];
+}

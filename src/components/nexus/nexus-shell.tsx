@@ -164,6 +164,7 @@ export function NexusShell() {
             <div className="flex flex-col gap-4">
               <MeshSettings />
               <MeshDefault apps={apps} mesh={mesh} refresh={refreshMesh} />
+              <MeshRotation mesh={mesh} refresh={refreshMesh} />
             </div>
             <MeshPanel
               apps={apps}
@@ -175,7 +176,6 @@ export function NexusShell() {
             />
             <div className="flex flex-col gap-4">
               <MeshAllocator apps={apps} mesh={mesh} miner={activeMiner} system={selectedMiner === "__system__"} refresh={refreshMesh} />
-              <MeshRotation mesh={mesh} refresh={refreshMesh} />
             </div>
           </div>
         ) : tab === "Settings" ? (

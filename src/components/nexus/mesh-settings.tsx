@@ -1,5 +1,12 @@
 import { useEffect, useState } from "react";
-import { fetchMeshSettings, saveMeshSettings, type MeshSettings as Settings } from "@/lib/forge-api";
+import { ChevronDown } from "lucide-react";
+import {
+  fetchFoundMiners,
+  fetchMeshSettings,
+  saveMeshSettings,
+  type FoundMiner,
+  type MeshSettings as Settings,
+} from "@/lib/forge-api";
 
 // Mesh-wide settings. The miner network is what lets the engine find miners on
 // the LAN and read their own hashrate and temperatures — it can't discover the
@@ -14,6 +21,24 @@ export function MeshSettings() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [found, setFound] = useState<FoundMiner[]>([]);
+
+  // The found list is only fetched while it is open.
+  useEffect(() => {
+    if (!open) return;
+    let live = true;
+    const load = async () => {
+      const list = await fetchFoundMiners();
+      if (live) setFound(list);
+    };
+    load();
+    const t = setInterval(load, 30_000);
+    return () => {
+      live = false;
+      clearInterval(t);
+    };
+  }, [open]);
 
   const load = async () => {
     const s = await fetchMeshSettings();
@@ -101,11 +126,19 @@ export function MeshSettings() {
           />
         </div>
         <div className="mt-2 flex items-center justify-between gap-3">
-          <span className="text-[0.7rem] text-foreground/90">
-            {settings?.network_start
-              ? `${settings.miners_found} miner${settings.miners_found === 1 ? "" : "s"} found`
-              : "Not set"}
-          </span>
+          {settings?.network_start ? (
+            <button
+              type="button"
+              onClick={() => setOpen((o) => !o)}
+              aria-expanded={open}
+              className="flex items-center gap-1 text-[0.7rem] text-foreground/90 transition hover:text-neon-cyan"
+            >
+              {settings.miners_found} miner{settings.miners_found === 1 ? "" : "s"} found
+              <ChevronDown className={`size-3 transition-transform ${open ? "rotate-180" : ""}`} />
+            </button>
+          ) : (
+            <span className="text-[0.7rem] text-foreground/90">Not set</span>
+          )}
           <button
             type="button"
             disabled={busy || !dirty}
@@ -120,6 +153,37 @@ export function MeshSettings() {
           </button>
         </div>
         {error && <p className="mt-2 text-[0.7rem] text-[#ff0080]">{error}</p>}
+        {open && (
+          <div className="mt-3 flex flex-col gap-2 border-t border-border/60 pt-3">
+            {found.length === 0 && <p className="text-[0.7rem] text-foreground/90">Reading miners…</p>}
+            {found.map((f) => {
+              const badge = f.on_mesh
+                ? { label: `Mesh · ${f.mesh_coin}`, color: "var(--neon-cyan)" }
+                : f.points_at_mesh
+                  ? { label: "Mesh · idle", color: "var(--neon-gold)" }
+                  : { label: "Direct", color: "var(--muted-foreground)" };
+              return (
+                <div key={f.host} className="rounded-lg border border-border/60 px-3 py-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="truncate text-[0.75rem] font-semibold">{f.worker}</span>
+                    <span
+                      className="shrink-0 rounded-md border px-1.5 py-0.5 text-[0.6rem] font-semibold"
+                      style={{ borderColor: badge.color, color: badge.color }}
+                    >
+                      {badge.label}
+                    </span>
+                  </div>
+                  <div className="mt-1 flex flex-wrap gap-x-2.5 gap-y-0.5 font-mono text-[0.65rem] text-foreground/90">
+                    <span>{f.model}</span>
+                    <span>{f.host}</span>
+                    <span>{f.hashrate_ths.toFixed(2)} TH/s</span>
+                    {f.asic_temp > 0 && <span>{Math.round(f.asic_temp)}°</span>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <div className="mt-5 flex items-center justify-between gap-3 border-t border-border/60 pt-4">
@@ -128,7 +192,7 @@ export function MeshSettings() {
             Include new miners
           </p>
           <p className="mt-1 text-[0.72rem] leading-relaxed text-foreground/90">
-            A newly connected miner joins Fleet Balance automatically.
+            A newly connected miner is automatically allocated to the Fleet Balance and assigned work.
           </p>
         </div>
         <button
