@@ -27,7 +27,7 @@ function uptime(since: string): string {
 
 function Stat({ label, value, color }: { label: string; value: string; color?: string }) {
   return (
-    <div className="flex flex-col items-center text-center">
+    <div className="flex w-fit flex-col items-center text-center">
       <span className="text-[0.6rem] tracking-[0.14em] text-foreground/90 uppercase">{label}</span>
       <span className="font-mono text-sm font-semibold" style={{ color: color ?? "var(--foreground)" }}>
         {value}
