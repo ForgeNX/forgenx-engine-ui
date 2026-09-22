@@ -67,7 +67,13 @@ export function MeshOverviewPill({ apps, overview }: { apps: ForgeApp[]; overvie
         <span style={{ color: overview.rejected > 0 ? "#ff0080" : "var(--foreground)" }}>{overview.rejected} rejected</span>
         <span className="text-foreground/50">/</span>
         <span style={{ color: overview.stale > 0 ? "var(--neon-gold)" : "var(--foreground)" }}>{overview.stale} stale</span>
-      </div>
+            {(overview.lost ?? 0) > 0 && (
+        <>
+          <span className="text-foreground/50">·</span>
+          <span className="text-muted-foreground">{overview.lost} lost to reconnect</span>
+        </>
+      )}
+</div>
 
       {overview.nodes.length > 0 && (
         <div className="mt-3 flex flex-col gap-1 border-t border-border/60 pt-3">

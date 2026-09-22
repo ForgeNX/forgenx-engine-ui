@@ -570,6 +570,7 @@ export type MeshMiner = {
   shares_accepted?: number;
   shares_rejected?: number;
   shares_stale?: number;
+  shares_lost?: number; // leftover work from before a reconnect, answered by the relay
   difficulty?: number; // current, on the coin it is mining
   next_difficulty?: number; // a change waiting for the next block; 0 when none
 };
@@ -813,5 +814,6 @@ export type MeshOverview = {
   rejected: number;
   stale: number;
   switches: number;
+  lost?: number;
   nodes: { coin: string; miners: number; ths: number }[];
 };

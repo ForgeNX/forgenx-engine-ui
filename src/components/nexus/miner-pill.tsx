@@ -139,6 +139,12 @@ export function MinerPill({
             <span style={{ color: (miner.shares_stale ?? 0) > 0 ? "var(--neon-gold)" : "var(--foreground)" }}>
             {miner.shares_stale ?? 0} stale
             </span>
+            {(miner.shares_lost ?? 0) > 0 && (
+              <>
+                <span className="text-foreground/50">·</span>
+                <span className="text-muted-foreground">{miner.shares_lost} lost to reconnect</span>
+              </>
+            )}
           </span>
         </div>
 
