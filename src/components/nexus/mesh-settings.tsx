@@ -14,6 +14,34 @@ import {
 //
 // The network saves on a button, since a half-typed address isn't worth
 // validating; the toggle saves as soon as it is flipped.
+
+type FoundSortKey = "name" | "hashrate" | "device" | "connection";
+
+const FOUND_SORTS: { key: FoundSortKey; label: string; first: "asc" | "desc" }[] = [
+  { key: "name", label: "Name", first: "asc" },
+  { key: "hashrate", label: "Hashrate", first: "desc" },
+  { key: "device", label: "Device", first: "asc" },
+  { key: "connection", label: "Connection", first: "asc" },
+];
+
+// Connection order: mining through the mesh, then pointed at it but idle, then
+// direct. Ties fall back to the name so equal miners keep their places.
+function sortFound(list: FoundMiner[], spec: string): FoundMiner[] {
+  const [key, dir] = spec.split(":");
+  const sign = dir === "desc" ? -1 : 1;
+  const byName = (a: FoundMiner, b: FoundMiner) =>
+    a.worker.localeCompare(b.worker, undefined, { numeric: true, sensitivity: "base" });
+  const rank = (f: FoundMiner) => (f.on_mesh ? 0 : f.points_at_mesh ? 1 : 2);
+  const primary: Record<string, (a: FoundMiner, b: FoundMiner) => number> = {
+    name: byName,
+    hashrate: (a, b) => a.hashrate_ths - b.hashrate_ths,
+    device: (a, b) => (a.model || "~").localeCompare(b.model || "~"),
+    connection: (a, b) => rank(a) - rank(b),
+  };
+  const cmp = primary[key] ?? byName;
+  return [...list].sort((a, b) => sign * cmp(a, b) || byName(a, b));
+}
+
 export function MeshSettings() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [start, setStart] = useState("");
@@ -23,6 +51,13 @@ export function MeshSettings() {
   const [saved, setSaved] = useState(false);
   const [open, setOpen] = useState(false);
   const [found, setFound] = useState<FoundMiner[]>([]);
+  const [foundSort, setFoundSort] = useState("name:asc");
+  const chooseFoundSort = (key: FoundSortKey, first: "asc" | "desc") => {
+    const [cur, dir] = foundSort.split(":");
+    const next = cur === key ? `${key}:${dir === "asc" ? "desc" : "asc"}` : `${key}:${first}`;
+    setFoundSort(next);
+    saveMeshSettings({ discovered_sort: next });
+  };
 
   // The found list is only fetched while it is open.
   useEffect(() => {
@@ -46,6 +81,7 @@ export function MeshSettings() {
     setSettings(s);
     setStart(s.network_start);
     setEnd(s.network_end);
+    if (s.discovered_sort) setFoundSort(s.discovered_sort);
   };
 
   useEffect(() => {
@@ -155,8 +191,31 @@ export function MeshSettings() {
         {error && <p className="mt-2 text-[0.7rem] text-[#ff0080]">{error}</p>}
         {open && (
           <div className="mt-3 flex flex-col gap-2 border-t border-border/60 pt-3">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="mr-1 text-[0.6rem] font-semibold tracking-[0.18em] text-foreground/90 uppercase">Sort</span>
+              {FOUND_SORTS.map((o) => {
+                const [cur, dir] = foundSort.split(":");
+                const on = cur === o.key;
+                return (
+                  <button
+                    key={o.key}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => chooseFoundSort(o.key, o.first)}
+                    className="rounded-md border px-2 py-0.5 text-[0.65rem] font-semibold transition"
+                    style={{
+                      borderColor: on ? "var(--neon-cyan)" : "var(--border)",
+                      color: on ? "var(--neon-cyan)" : "var(--foreground)",
+                    }}
+                  >
+                    {o.label}
+                    {on && (dir === "asc" ? " ↑" : " ↓")}
+                  </button>
+                );
+              })}
+            </div>
             {found.length === 0 && <p className="text-[0.7rem] text-foreground/90">Reading miners…</p>}
-            {found.map((f) => {
+            {sortFound(found, foundSort).map((f) => {
               const badge = f.on_mesh
                 ? { label: `Mesh · ${f.mesh_coin}`, color: "var(--neon-cyan)" }
                 : f.points_at_mesh

@@ -15,11 +15,12 @@ import type { ForgeApp } from "./nexus-data";
 // One pill per meshed miner. Selecting a pill hands it to the allocator, so this
 // panel only describes — it does not change anything itself.
 
-type SortKey = "name" | "hashrate" | "node" | "fleet";
+type SortKey = "name" | "hashrate" | "device" | "node" | "fleet";
 
 const SORTS: { key: SortKey; label: string; first: "asc" | "desc" }[] = [
   { key: "name", label: "Name", first: "asc" },
   { key: "hashrate", label: "Hashrate", first: "desc" },
+  { key: "device", label: "Device", first: "asc" },
   { key: "node", label: "Node", first: "asc" },
   { key: "fleet", label: "Fleet", first: "desc" },
 ];
@@ -34,6 +35,7 @@ function sortMiners(list: MeshMiner[], spec: string): MeshMiner[] {
   const primary: Record<string, (a: MeshMiner, b: MeshMiner) => number> = {
     name: byName,
     hashrate: (a, b) => (a.hashrate_15m || 0) - (b.hashrate_15m || 0),
+    device: (a, b) => (a.model || a.device || "~").localeCompare(b.model || b.device || "~"),
     node: (a, b) => (a.active_coin || "~").localeCompare(b.active_coin || "~"),
     fleet: (a, b) => Number(a.assignment === "AUTO") - Number(b.assignment === "AUTO"),
   };
