@@ -92,7 +92,7 @@ export function MinerPill({
           <span ref={fromRef} className="font-display block w-fit truncate text-sm font-bold">
             {miner.worker}
           </span>
-          <span className="mt-0.5 block whitespace-pre-wrap text-[0.7rem] text-foreground/90">
+          <span className="mt-0.5 block whitespace-pre-wrap font-mono text-[0.7rem] text-foreground/90">
             Device: {miner.model || device(miner.device) || "unknown"}<span className="mx-3">-</span>IP:{" "}
             <span className="font-mono text-foreground">{miner.ip || "—"}</span>
           </span>
