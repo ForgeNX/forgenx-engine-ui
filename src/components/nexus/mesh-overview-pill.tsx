@@ -61,7 +61,7 @@ export function MeshOverviewPill({ apps, overview }: { apps: ForgeApp[]; overvie
       </div>
 
       <div className="mt-3 flex flex-wrap items-baseline justify-center gap-2 font-mono text-[0.72rem]">
-        <span className="text-[0.6rem] tracking-[0.14em] text-foreground/90 uppercase">Shares</span>
+        <span className="text-[0.6rem] tracking-[0.14em] text-foreground/90 uppercase">Shares:</span>
         <span style={{ color: "var(--neon-green)" }}>{overview.accepted} accepted</span>
         <span className="text-foreground/50">/</span>
         <span style={{ color: overview.rejected > 0 ? "#ff0080" : "var(--foreground)" }}>{overview.rejected} rejected</span>

@@ -93,10 +93,11 @@ export function MinerPill({
             {miner.worker}
           </span>
           <span className="mt-0.5 block whitespace-pre-wrap text-[0.7rem] text-foreground/90">
-            Device: {miner.model || device(miner.device) || "unknown"}{"  -  "}IP:{" "}
-            <span className="font-mono text-muted-foreground">{miner.ip || "—"}</span>
+            Device: {miner.model || device(miner.device) || "unknown"}<span className="mx-3">-</span>IP:{" "}
+            <span className="font-mono text-foreground">{miner.ip || "—"}</span>
           </span>
           <span className="mt-0.5 block whitespace-pre-wrap font-mono text-[0.7rem] text-foreground/90">
+            Hashrate:{" "}
             {miner.connected ? (
               <span className="text-[0.72rem] text-neon-cyan">{hashrate(miner.hashrate_15m)}</span>
             ) : (
@@ -105,6 +106,18 @@ export function MinerPill({
             {"  -  "}Asic: {(miner.asic_temp ?? 0) > 0 ? `${Math.round(miner.asic_temp ?? 0)}°` : "—"}
             {(miner.asic_temp_max ?? 0) > 0 && ` / ${Math.round(miner.asic_temp_max ?? 0)}° max`}
             {"  -  "}VR: {(miner.vr_temp ?? 0) > 0 ? `${Math.round(miner.vr_temp ?? 0)}°` : "—"}
+          </span>
+          <span className="mt-1 flex flex-wrap items-baseline gap-2 font-mono text-[0.72rem]">
+            <span className="text-[0.6rem] tracking-[0.14em] text-foreground/90 uppercase">Shares:</span>
+            <span style={{ color: "var(--neon-green)" }}>{miner.shares_accepted ?? 0} accepted</span>
+            <span className="text-foreground/50">/</span>
+            <span style={{ color: (miner.shares_rejected ?? 0) > 0 ? "#ff0080" : "var(--foreground)" }}>
+            {miner.shares_rejected ?? 0} rejected
+            </span>
+            <span className="text-foreground/50">/</span>
+            <span style={{ color: (miner.shares_stale ?? 0) > 0 ? "var(--neon-gold)" : "var(--foreground)" }}>
+            {miner.shares_stale ?? 0} stale
+            </span>
           </span>
         </div>
 
@@ -178,19 +191,6 @@ export function MinerPill({
         })}
       </div>
 
-      <div className="mt-3 flex flex-wrap items-baseline justify-center gap-2 font-mono text-[0.72rem]">
-        <span className="text-[0.6rem] tracking-[0.14em] text-foreground/90 uppercase">Shares</span>
-        <span style={{ color: "var(--neon-green)" }}>{miner.shares_accepted ?? 0} accepted</span>
-        <span className="text-foreground/50">/</span>
-        <span style={{ color: (miner.shares_rejected ?? 0) > 0 ? "#ff0080" : "var(--foreground)" }}>
-          {miner.shares_rejected ?? 0} rejected
-        </span>
-        <span className="text-foreground/50">/</span>
-        <span style={{ color: (miner.shares_stale ?? 0) > 0 ? "var(--neon-gold)" : "var(--foreground)" }}>
-          {miner.shares_stale ?? 0} stale
-        </span>
-      </div>
-
       {onToggleSystem && (
         <span className="mt-2 flex items-center gap-2">
           <button
@@ -219,7 +219,7 @@ export function MinerPill({
               }}
             />
           </button>
-          <span className="text-[0.68rem] text-foreground/90">Fleet Balance</span>
+          <span className="text-[0.75rem] text-foreground/90">Fleet Balance</span>
         </span>
       )}
     </div>

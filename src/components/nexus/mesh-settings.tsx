@@ -239,7 +239,7 @@ export function MeshSettings() {
                     Device: {f.model || "unknown"}  -  IP: {f.host}
                   </p>
                   <p className="mt-0.5 font-mono text-[0.65rem] text-foreground/90 whitespace-pre-wrap">
-                    <span className="text-neon-cyan">{f.hashrate_ths.toFixed(2)} TH/s</span>
+                    Hashrate: <span className="text-neon-cyan">{f.hashrate_ths.toFixed(2)} TH/s</span>
                     {"  -  "}Asic: {temp(f.asic_temp)}
                     {f.asic_temp_max > 0 && ` / ${temp(f.asic_temp_max)} max`}
                     {"  -  "}VR: {temp(f.vr_temp)}
