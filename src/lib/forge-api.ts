@@ -573,6 +573,7 @@ export type MeshSettings = {
   network_end: string;
   include_new: boolean;
   miners_found: number;
+  miner_sort: string; // e.g. "hashrate:desc"
 };
 
 export async function fetchMeshSettings(): Promise<MeshSettings | null> {
@@ -582,7 +583,7 @@ export async function fetchMeshSettings(): Promise<MeshSettings | null> {
 // Saves whichever settings are given. The engine validates the range and
 // answers with the reason when it rejects one, which is passed back as error.
 export async function saveMeshSettings(
-  patch: Partial<Pick<MeshSettings, "network_start" | "network_end" | "include_new">>,
+  patch: Partial<Pick<MeshSettings, "network_start" | "network_end" | "include_new" | "miner_sort">>,
 ): Promise<{ ok: boolean; settings?: MeshSettings; error?: string }> {
   try {
     const res = await fetch("/api/mesh/settings", {

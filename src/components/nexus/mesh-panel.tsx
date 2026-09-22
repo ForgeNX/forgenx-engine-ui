@@ -1,11 +1,45 @@
 import { Share2, Link2Off } from "lucide-react";
-import { assignMeshWorker, type MeshStatus } from "@/lib/forge-api";
+import { useEffect, useState } from "react";
+import {
+  assignMeshWorker,
+  fetchMeshSettings,
+  saveMeshSettings,
+  type MeshMiner,
+  type MeshStatus,
+} from "@/lib/forge-api";
 import { MinerPill } from "./miner-pill";
 import { SystemMeshPill, SYSTEM_ID } from "./system-mesh-pill";
 import type { ForgeApp } from "./nexus-data";
 
 // One pill per meshed miner. Selecting a pill hands it to the allocator, so this
 // panel only describes — it does not change anything itself.
+
+type SortKey = "name" | "hashrate" | "node" | "fleet";
+
+const SORTS: { key: SortKey; label: string; first: "asc" | "desc" }[] = [
+  { key: "name", label: "Name", first: "asc" },
+  { key: "hashrate", label: "Hashrate", first: "desc" },
+  { key: "node", label: "Node", first: "asc" },
+  { key: "fleet", label: "Fleet", first: "desc" },
+];
+
+// Sorts by the chosen key, always falling back to the name so equal miners
+// never swap places between polls. The direction applies to the key only.
+function sortMiners(list: MeshMiner[], spec: string): MeshMiner[] {
+  const [key, dir] = spec.split(":");
+  const sign = dir === "desc" ? -1 : 1;
+  const byName = (a: MeshMiner, b: MeshMiner) =>
+    a.worker.localeCompare(b.worker, undefined, { numeric: true, sensitivity: "base" });
+  const primary: Record<string, (a: MeshMiner, b: MeshMiner) => number> = {
+    name: byName,
+    hashrate: (a, b) => (a.hashrate_15m || 0) - (b.hashrate_15m || 0),
+    node: (a, b) => (a.active_coin || "~").localeCompare(b.active_coin || "~"),
+    fleet: (a, b) => Number(a.assignment === "AUTO") - Number(b.assignment === "AUTO"),
+  };
+  const cmp = primary[key] ?? byName;
+  return [...list].sort((a, b) => sign * cmp(a, b) || byName(a, b));
+}
+
 export function MeshPanel({
   apps,
   mesh,
@@ -21,6 +55,20 @@ export function MeshPanel({
   onSelect: (worker: string | null) => void;
   refresh: () => void;
 }) {
+  // How the miner list is sorted, saved on the engine like the other Nexus
+  // settings so it holds across reloads, restarts and devices.
+  const [sort, setSort] = useState("name:asc");
+  useEffect(() => {
+    fetchMeshSettings().then((st) => {
+      if (st?.miner_sort) setSort(st.miner_sort);
+    });
+  }, []);
+  const chooseSort = (key: SortKey, first: "asc" | "desc") => {
+    const [cur, dir] = sort.split(":");
+    const next = cur === key ? `${key}:${dir === "asc" ? "desc" : "asc"}` : `${key}:${first}`;
+    setSort(next);
+    saveMeshSettings({ miner_sort: next });
+  };
   const appFor = (sym: string) => apps.find((a) => a.id.toUpperCase() === sym.toUpperCase());
 
   const hashrate = (th: number) =>
@@ -78,12 +126,35 @@ export function MeshPanel({
           selected={selected === SYSTEM_ID}
           onSelect={() => onSelect(selected === SYSTEM_ID ? null : SYSTEM_ID)}
         />
+        <div className="flex flex-wrap items-center gap-1.5 px-1">
+          <span className="mr-1 text-[0.6rem] font-semibold tracking-[0.18em] text-foreground/90 uppercase">Sort</span>
+          {SORTS.map((o) => {
+            const [cur, dir] = sort.split(":");
+            const on = cur === o.key;
+            return (
+              <button
+                key={o.key}
+                type="button"
+                aria-pressed={on}
+                onClick={() => chooseSort(o.key, o.first)}
+                className="rounded-md border px-2 py-0.5 text-[0.65rem] font-semibold transition"
+                style={{
+                  borderColor: on ? "var(--neon-cyan)" : "var(--border)",
+                  color: on ? "var(--neon-cyan)" : "var(--foreground)",
+                }}
+              >
+                {o.label}
+                {on && (dir === "asc" ? " ↑" : " ↓")}
+              </button>
+            );
+          })}
+        </div>
         {mesh.miners.length === 0 ? (
           <div className="py-6 text-sm text-muted-foreground">
             No miners on the mesh yet. Point one at port {mesh.port} to begin.
           </div>
         ) : (
-          mesh.miners.map((m) => (
+          sortMiners(mesh.miners, sort).map((m) => (
             <MinerPill
               key={m.worker}
               apps={apps}
