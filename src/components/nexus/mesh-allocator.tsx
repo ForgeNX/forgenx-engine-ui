@@ -4,6 +4,7 @@ import {
   assignMeshWorker,
   formatAllocation,
   parseAllocation,
+  setMeshPins,
   setMeshSystemTarget,
   type MeshMiner,
   type MeshStatus,
@@ -40,6 +41,17 @@ export function MeshAllocator({
 
   const locked = !system && miner?.assignment === "AUTO";
   const source = system ? mesh?.system_target ?? "" : miner?.assignment ?? "";
+  // Pins are saved on the engine, per miner and for Fleet Balance.
+  const pinWorker = system ? "__system__" : miner?.worker ?? "";
+  const pinSource = (system ? mesh?.system_pins : miner?.pins) ?? [];
+  const pinKey = pinSource.join(",");
+  const togglePin = (sym: string) => {
+    const next = { ...pinned, [sym]: !pinned[sym] };
+    setPinned(next);
+    if (pinWorker) {
+      setMeshPins(pinWorker, Object.keys(next).filter((c) => next[c])).then(() => refresh());
+    }
+  };
 
   useEffect(() => {
     if (!system && !miner) return;
@@ -57,9 +69,11 @@ export function MeshAllocator({
       }
     }
     setPcts(seeded);
-    setPinned({});
+    const seededPins: Record<string, boolean> = {};
+    for (const c of pinSource) seededPins[c.toUpperCase()] = true;
+    setPinned(seededPins);
     setNote("");
-  }, [system, miner?.worker, source, mesh?.coins.join(",")]);
+  }, [system, miner?.worker, source, pinKey, mesh?.coins.join(",")]);
 
   if (!system && !miner) {
     return (
@@ -121,6 +135,7 @@ export function MeshAllocator({
     for (const c of coins) next[c] = c === coin ? 100 : 0;
     setPcts(next);
     setPinned({});
+    if (pinWorker) setMeshPins(pinWorker, []);
     save(next);
   };
 
@@ -185,7 +200,7 @@ export function MeshAllocator({
                   type="button"
                   aria-pressed={isPinned}
                   disabled={busy || locked}
-                  onClick={() => setPinned((p) => ({ ...p, [sym]: !p[sym] }))}
+                  onClick={() => togglePin(sym)}
                   className="flex shrink-0 items-center gap-1 rounded-lg border px-2 py-1 text-[0.65rem] font-semibold transition disabled:opacity-40"
                   style={{
                     borderColor: isPinned ? "var(--neon-cyan)" : "var(--border)",
@@ -221,8 +236,15 @@ export function MeshAllocator({
                 max={100}
                 step={1}
                 value={pct}
-                disabled={busy || locked || isPinned || fixed}
-                onChange={(e) => setCoin(sym, Number(e.target.value))}
+                // A pinned slider is left enabled so the browser draws it in colour, and
+                // refuses input instead: a disabled range input is always drawn grey.
+                disabled={busy || locked || (fixed && !isPinned)}
+                aria-disabled={isPinned || undefined}
+                tabIndex={isPinned ? -1 : undefined}
+                style={isPinned && !locked ? { pointerEvents: "none" } : undefined}
+                onChange={(e) => {
+                  if (!isPinned) setCoin(sym, Number(e.target.value));
+                }}
                 onMouseUp={() => save()}
                 onTouchEnd={() => save()}
                 onKeyUp={() => save()}

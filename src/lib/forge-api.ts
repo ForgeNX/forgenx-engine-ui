@@ -565,6 +565,7 @@ export type MeshMiner = {
   asic_temp?: number;
   asic_temp_max?: number; // hottest single chip, where the miner reports it
   vr_temp?: number; // 0 when the miner has no regulator sensor
+  pins?: string[]; // coins pinned in the allocator, saved on the engine
 };
 
 export type MeshSettings = {
@@ -637,6 +638,7 @@ export type MeshStatus = {
   rotate_interval: string;
   // The System Mesh's split, e.g. "DGB:60,BCH:40". Empty until set.
   system_target?: string;
+  system_pins?: string[];
   miners: MeshMiner[];
 };
 
@@ -650,6 +652,7 @@ export async function fetchMeshStatus(): Promise<MeshStatus | null> {
     default_order: s.default_order ?? [],
     rotate_interval: s.rotate_interval ?? "",
     system_target: s.system_target ?? "",
+    system_pins: s.system_pins ?? [],
     miners: s.miners ?? [],
   };
 }
@@ -746,5 +749,20 @@ export async function setMeshSystemTarget(target: string): Promise<{ ok: boolean
     return res.ok ? { ok: true } : { ok: false, error: j.error ?? "request failed" };
   } catch {
     return { ok: false, error: "request failed" };
+  }
+}
+
+// Saves which coins are pinned in the allocator, for a worker or for Fleet
+// Balance ("__system__"), so pins hold across reloads and devices.
+export async function setMeshPins(worker: string, coins: string[]): Promise<boolean> {
+  try {
+    const res = await fetch("/api/mesh/pins", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ worker, coins }),
+    });
+    return res.ok;
+  } catch {
+    return false;
   }
 }
