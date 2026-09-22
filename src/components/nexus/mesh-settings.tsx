@@ -131,9 +131,9 @@ export function MeshSettings() {
               type="button"
               onClick={() => setOpen((o) => !o)}
               aria-expanded={open}
-              className="flex items-center gap-1 text-[0.7rem] text-foreground/90 transition hover:text-neon-cyan"
+              className="flex items-center gap-1 text-[0.7rem] font-semibold tracking-[0.18em] text-foreground uppercase transition hover:text-neon-cyan"
             >
-              {settings.miners_found} miner{settings.miners_found === 1 ? "" : "s"} found
+              {settings.miners_found} Miner{settings.miners_found === 1 ? "" : "s"} Discovered
               <ChevronDown className={`size-3 transition-transform ${open ? "rotate-180" : ""}`} />
             </button>
           ) : (
@@ -162,10 +162,13 @@ export function MeshSettings() {
                 : f.points_at_mesh
                   ? { label: "Mesh · idle", color: "var(--neon-gold)" }
                   : { label: "Direct", color: "var(--muted-foreground)" };
+              const temp = (t: number) => (t > 0 ? `${Math.round(t)}°` : "—");
               return (
                 <div key={f.host} className="rounded-lg border border-border/60 px-3 py-2">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="truncate text-[0.75rem] font-semibold">{f.worker}</span>
+                    <span className="truncate text-[0.75rem] font-semibold" style={{ color: f.on_mesh || f.points_at_mesh ? badge.color : "var(--foreground)" }}>
+                      {f.worker}
+                    </span>
                     <span
                       className="shrink-0 rounded-md border px-1.5 py-0.5 text-[0.6rem] font-semibold"
                       style={{ borderColor: badge.color, color: badge.color }}
@@ -173,12 +176,15 @@ export function MeshSettings() {
                       {badge.label}
                     </span>
                   </div>
-                  <div className="mt-1 flex flex-wrap gap-x-2.5 gap-y-0.5 font-mono text-[0.65rem] text-foreground/90">
-                    <span>{f.model}</span>
-                    <span>{f.host}</span>
-                    <span>{f.hashrate_ths.toFixed(2)} TH/s</span>
-                    {f.asic_temp > 0 && <span>{Math.round(f.asic_temp)}°</span>}
-                  </div>
+                  <p className="mt-1 font-mono text-[0.65rem] text-foreground/90 whitespace-pre-wrap">
+                    Device: {f.model || "unknown"}  -  IP: {f.host}
+                  </p>
+                  <p className="mt-0.5 font-mono text-[0.65rem] text-foreground/90 whitespace-pre-wrap">
+                    <span className="text-neon-cyan">{f.hashrate_ths.toFixed(2)} TH/s</span>
+                    {"  -  "}Asic: {temp(f.asic_temp)}
+                    {f.asic_temp_max > 0 && ` / ${temp(f.asic_temp_max)} max`}
+                    {"  -  "}VR: {temp(f.vr_temp)}
+                  </p>
                 </div>
               );
             })}
