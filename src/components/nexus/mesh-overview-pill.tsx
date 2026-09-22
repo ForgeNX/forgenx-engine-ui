@@ -48,15 +48,15 @@ export function MeshOverviewPill({ apps, overview }: { apps: ForgeApp[]; overvie
           <Activity className="size-4 text-neon-cyan" />
           <span className="font-display text-sm font-bold">Mesh Overview</span>
         </span>
-        {up && <span className="font-mono text-[0.68rem] text-foreground/90">session {up}</span>}
+        {up && <span className="font-mono text-[0.68rem] text-foreground/90">Session Uptime: {up}</span>}
       </div>
 
       <div className="mt-3 grid grid-cols-3 gap-x-4 gap-y-3">
         <Stat label="Miners" value={String(overview.connected)} />
         <Stat label="Hashrate" value={`${overview.total_ths.toFixed(2)} TH/s`} color="var(--neon-cyan)" />
-        <Stat label="Peak" value={`${overview.peak_ths.toFixed(2)} TH/s`} />
+        <Stat label="Peak Hashrate" value={`${overview.peak_ths.toFixed(2)} TH/s`} />
         <Stat label="Best share" value={compact(overview.best_share)} />
-        <Stat label="Blocks" value={String(overview.blocks)} color={overview.blocks > 0 ? "var(--neon-green)" : undefined} />
+        <Stat label="Blocks Found" value={String(overview.blocks)} color={overview.blocks > 0 ? "var(--neon-green)" : undefined} />
         <Stat label="Switches" value={String(overview.switches)} />
       </div>
 
