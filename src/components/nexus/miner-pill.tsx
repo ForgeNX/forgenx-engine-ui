@@ -22,6 +22,16 @@ function compactDiff(n: number): string {
   return `${n.toFixed(i === 0 ? 0 : 1)}${units[i]}`;
 }
 
+// Which figure a miner's hashrate came from. The miner's own is exact from its
+// first second; the relay's is inferred from the shares it has submitted; a
+// coin's average is a last resort while the others are unavailable. Saying so
+// explains why a number here can differ from the one on a coin's own screen.
+const SOURCE_LABEL: Record<string, string> = {
+  miner: "from miner",
+  mesh: "at relay",
+  coin: "coin avg",
+};
+
 export function MinerPill({
   apps,
   coins,
@@ -110,7 +120,15 @@ export function MinerPill({
           <span className="mt-0.5 block whitespace-pre-wrap font-mono text-[0.7rem] text-foreground/90">
             Hashrate:{" "}
             {miner.connected ? (
-              <span className="text-[0.72rem] text-neon-cyan">{hashrate(miner.hashrate_15m)}</span>
+              <>
+                <span className="text-[0.72rem] text-neon-cyan">{hashrate(miner.hashrate_15m)}</span>
+                {SOURCE_LABEL[miner.hashrate_source ?? ""] && (
+                  <span className="text-muted-foreground">
+                    {" "}
+                    ({SOURCE_LABEL[miner.hashrate_source ?? ""]})
+                  </span>
+                )}
+              </>
             ) : (
               <span className="text-muted-foreground">offline</span>
             )}
