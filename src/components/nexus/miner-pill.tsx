@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Link2Off } from "lucide-react";
+import { Link2Off, Unplug } from "lucide-react";
 import { AnimatedBeam } from "./animated-beam";
 import { RejectionList } from "./rejection-list";
 import { parseAllocation, type MeshMiner } from "@/lib/forge-api";
@@ -81,7 +81,9 @@ export function MinerPill({
   // be minutes. Showing the coin it is moving to makes that visible rather than
   // looking like nothing is happening.
   const pending = (miner.pending_coin ?? "").toUpperCase();
-  const beams = pending && !routed.includes(pending) ? [...routed, pending].slice(0, nodeRefs.length) : routed;
+  const beamsWhenUp = pending && !routed.includes(pending) ? [...routed, pending].slice(0, nodeRefs.length) : routed;
+  // An offline miner is not mining anywhere, so it shows no nodes and no beams.
+  const beams = miner.connected ? beamsWhenUp : [];
 
   const hashrate = (th: number) =>
     th >= 1000 ? `${(th / 1000).toFixed(2)} PH/s` : `${th.toFixed(2)} TH/s`;
@@ -122,29 +124,38 @@ export function MinerPill({
           <span ref={fromRef} className="font-display block w-fit truncate text-sm font-bold">
             {miner.worker}
           </span>
-          <span className="mt-0.5 block whitespace-pre-wrap font-mono text-[0.7rem] text-foreground/90">
-            Device: {miner.model || device(miner.device) || "unknown"}<span className="mx-3">-</span>IP:{" "}
-            <span className="font-mono text-foreground">{miner.ip || "—"}</span>
-          </span>
-          <span className="mt-0.5 block whitespace-pre-wrap font-mono text-[0.7rem] text-foreground/90">
-            Hashrate:{" "}
-            {miner.connected ? (
-              <>
-                <span className="text-[0.72rem] text-neon-cyan">{hashrate(miner.hashrate_15m)}</span>
-                {SOURCE_LABEL[miner.hashrate_source ?? ""] && (
-                  <span className="text-muted-foreground">
-                    {" "}
-                    ({SOURCE_LABEL[miner.hashrate_source ?? ""]})
-                  </span>
+          {miner.connected ? (
+            <>
+              <span className="mt-0.5 block whitespace-pre-wrap font-mono text-[0.7rem] text-foreground/90">
+                Device: {miner.model || device(miner.device) || "unknown"}<span className="mx-3">-</span>IP:{" "}
+                <span className="font-mono text-foreground">{miner.ip || "—"}</span>
+              </span>
+              <span className="mt-0.5 block whitespace-pre-wrap font-mono text-[0.7rem] text-foreground/90">
+                Hashrate:{" "}
+                {miner.connected ? (
+                  <>
+                    <span className="text-[0.72rem] text-neon-cyan">{hashrate(miner.hashrate_15m)}</span>
+                    {SOURCE_LABEL[miner.hashrate_source ?? ""] && (
+                      <span className="text-muted-foreground">
+                        {" "}
+                        ({SOURCE_LABEL[miner.hashrate_source ?? ""]})
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <span className="text-muted-foreground">offline</span>
                 )}
-              </>
-            ) : (
-              <span className="text-muted-foreground">offline</span>
-            )}
-            {"  -  "}Asic: {(miner.asic_temp ?? 0) > 0 ? `${Math.round(miner.asic_temp ?? 0)}°` : "—"}
-            {(miner.asic_temp_max ?? 0) > 0 && ` / ${Math.round(miner.asic_temp_max ?? 0)}° max`}
-            {"  -  "}VR: {(miner.vr_temp ?? 0) > 0 ? `${Math.round(miner.vr_temp ?? 0)}°` : "—"}
-          </span>
+                {"  -  "}Asic: {(miner.asic_temp ?? 0) > 0 ? `${Math.round(miner.asic_temp ?? 0)}°` : "—"}
+                {(miner.asic_temp_max ?? 0) > 0 && ` / ${Math.round(miner.asic_temp_max ?? 0)}° max`}
+                {"  -  "}VR: {(miner.vr_temp ?? 0) > 0 ? `${Math.round(miner.vr_temp ?? 0)}°` : "—"}
+              </span>
+            </>
+          ) : (
+            <span className="mt-0.5 flex items-center gap-1.5 font-mono text-[0.7rem] font-semibold" style={{ color: "#e0115f" }}>
+                <Unplug className="size-3.5" />
+                Device offline
+              </span>
+          )}
           {(miner.difficulty ?? 0) > 0 && (
             <span className="mt-0.5 block whitespace-pre-wrap font-mono text-[0.7rem] text-foreground/90">
               Difficulty (current): {compactDiff(miner.difficulty ?? 0)}

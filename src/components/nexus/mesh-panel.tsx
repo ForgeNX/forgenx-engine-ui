@@ -40,7 +40,11 @@ function sortMiners(list: MeshMiner[], spec: string): MeshMiner[] {
     fleet: (a, b) => Number(a.assignment === "AUTO") - Number(b.assignment === "AUTO"),
   };
   const cmp = primary[key] ?? byName;
-  return [...list].sort((a, b) => sign * cmp(a, b) || byName(a, b));
+  // Offline miners fall to the bottom whatever the sort, and return to their
+  // place as soon as they reconnect - the list is sorted afresh on every poll.
+  return [...list].sort(
+    (a, b) => Number(!a.connected) - Number(!b.connected) || sign * cmp(a, b) || byName(a, b),
+  );
 }
 
 export function MeshPanel({
