@@ -81,7 +81,7 @@ export function MeshRotation({
         })}
       </div>
 
-      <p className="mt-4 text-[0.7rem] leading-relaxed text-muted-foreground">
+      <p className="mt-4 text-[0.7rem] leading-relaxed text-foreground/90">
         Splitting a miner divides the blocks it can expect between those nodes rather than adding to
         them. It is a way to be paid in more than one coin, not a way to find more.
       </p>

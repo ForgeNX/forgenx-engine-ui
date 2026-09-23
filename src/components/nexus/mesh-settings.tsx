@@ -175,141 +175,68 @@ export function MeshSettings() {
             onChange={(e) => setEnd(e.target.value)}
             aria-label="End address (optional)"
           />
-        </div>
-        <div className="mt-2 flex items-center justify-between gap-3">
-          {settings?.network_start ? (
-            <button
-              type="button"
-              onClick={() => setOpen((o) => !o)}
-              aria-expanded={open}
-              className="flex items-center gap-1 text-[0.7rem] font-semibold tracking-[0.18em] text-foreground uppercase transition hover:text-neon-cyan"
-            >
-              {settings.miners_found} Miner{settings.miners_found === 1 ? "" : "s"} Discovered
-              <ChevronDown className={`size-3 transition-transform ${open ? "rotate-180" : ""}`} />
-            </button>
-          ) : (
-            <span className="text-[0.7rem] text-foreground/90">Not set</span>
-          )}
           <button
-            type="button"
-            disabled={busy || !dirty}
-            onClick={saveNetwork}
-            className="rounded-lg border px-3 py-1 text-[0.7rem] font-semibold transition disabled:opacity-40"
-            style={{
-              borderColor: dirty ? "var(--neon-cyan)" : "var(--border)",
-              color: dirty ? "var(--neon-cyan)" : "var(--foreground)",
-            }}
+          type="button"
+          disabled={busy || !dirty}
+          onClick={saveNetwork}
+          className="rounded-lg border px-3 py-1 text-[0.7rem] font-semibold transition disabled:opacity-40"
+          style={{
+          borderColor: dirty ? "var(--neon-cyan)" : "var(--border)",
+          color: dirty ? "var(--neon-cyan)" : "var(--foreground)",
+          }}
           >
-            {saved ? "Saved" : busy ? "Saving…" : "Save"}
+          {saved ? "Saved" : busy ? "Saving…" : "Save"}
           </button>
         </div>
-        {error && <p className="mt-2 text-[0.7rem] text-[#ff0080]">{error}</p>}
-        {open && (
-          <div className="mt-3 flex flex-col gap-2 border-t border-border/60 pt-3">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="mr-1 text-[0.6rem] font-semibold tracking-[0.18em] text-foreground/90 uppercase">Sort</span>
-              {FOUND_SORTS.map((o) => {
-                const [cur, dir] = foundSort.split(":");
-                const on = cur === o.key;
-                return (
-                  <button
-                    key={o.key}
-                    type="button"
-                    aria-pressed={on}
-                    onClick={() => chooseFoundSort(o.key, o.first)}
-                    className="rounded-md border px-2 py-0.5 text-[0.65rem] font-semibold transition"
-                    style={{
-                      borderColor: on ? "var(--neon-cyan)" : "var(--border)",
-                      color: on ? "var(--neon-cyan)" : "var(--foreground)",
-                    }}
-                  >
-                    {o.label}
-                    {on && (dir === "asc" ? " ↑" : " ↓")}
-                  </button>
-                );
-              })}
+      {/* Two mesh-wide settings, side by side so their headings and toggles line up. */}
+      <div className="mt-5 grid grid-cols-2 gap-5 border-t border-border/60 pt-4">
+        <div>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[0.7rem] font-semibold tracking-[0.18em] text-foreground uppercase">
+                Include new miners
+              </p>
+              <p className="mt-1 text-[0.72rem] leading-relaxed text-foreground/90">
+                A newly connected miner is automatically allocated to the Fleet Balance and assigned work.
+              </p>
             </div>
-            {found.length === 0 && <p className="text-[0.7rem] text-foreground/90">Reading miners…</p>}
-            {sortFound(found, foundSort).map((f) => {
-              const badge = f.on_mesh
-                ? { label: `Mesh · ${f.mesh_coin}`, color: "var(--neon-cyan)" }
-                : f.points_at_mesh
-                  ? { label: "Mesh · idle", color: "var(--neon-gold)" }
-                  : { label: "Direct", color: "var(--muted-foreground)" };
-              const temp = (t: number) => (t > 0 ? `${Math.round(t)}°` : "—");
-              return (
-                <div key={f.host} className="rounded-lg border border-border/60 px-3 py-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="truncate text-[0.75rem] font-semibold" style={{ color: f.on_mesh || f.points_at_mesh ? badge.color : "var(--foreground)" }}>
-                      {f.worker}
-                    </span>
-                    <span
-                      className="shrink-0 rounded-md border px-1.5 py-0.5 text-[0.6rem] font-semibold"
-                      style={{ borderColor: badge.color, color: badge.color }}
-                    >
-                      {badge.label}
-                    </span>
-                  </div>
-                  <p className="mt-1 font-mono text-[0.65rem] text-foreground/90 whitespace-pre-wrap">
-                    Device: {f.model || "unknown"}  -  IP: {f.host}
-                  </p>
-                  <p className="mt-0.5 font-mono text-[0.65rem] text-foreground/90 whitespace-pre-wrap">
-                    Hashrate: <span className="text-neon-cyan">{f.hashrate_ths.toFixed(2)} TH/s</span>
-                    {"  -  "}Asic: {temp(f.asic_temp)}
-                    {f.asic_temp_max > 0 && ` / ${temp(f.asic_temp_max)} max`}
-                    {"  -  "}VR: {temp(f.vr_temp)}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      <div className="mt-5 flex items-center justify-between gap-3 border-t border-border/60 pt-4">
-        <div className="min-w-0">
-          <p className="text-[0.7rem] font-semibold tracking-[0.18em] text-foreground uppercase">
-            Include new miners
-          </p>
-          <p className="mt-1 text-[0.72rem] leading-relaxed text-foreground/90">
-            A newly connected miner is automatically allocated to the Fleet Balance and assigned work.
-          </p>
-        </div>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={settings?.include_new ?? false}
-          aria-label="Include newly connected miners in Fleet Balance"
-          disabled={!settings}
-          onClick={toggleIncludeNew}
-          className="relative h-5 w-9 shrink-0 rounded-full border transition disabled:opacity-40"
-          style={{
-            borderColor: settings?.include_new ? "var(--neon-cyan)" : "var(--border)",
-            background: settings?.include_new
-              ? "color-mix(in oklab, var(--neon-cyan) 25%, transparent)"
-              : "var(--secondary)",
-          }}
-        >
-          <span
-            className="absolute top-1/2 size-3.5 -translate-y-1/2 rounded-full transition-all"
+          <button
+            type="button"
+            role="switch"
+            aria-checked={settings?.include_new ?? false}
+            aria-label="Include newly connected miners in Fleet Balance"
+            disabled={!settings}
+            onClick={toggleIncludeNew}
+            className="relative h-5 w-9 shrink-0 rounded-full border transition disabled:opacity-40"
             style={{
-              left: settings?.include_new ? "calc(100% - 1.05rem)" : "0.15rem",
-              background: settings?.include_new ? "var(--neon-cyan)" : "var(--muted-foreground)",
-              boxShadow: settings?.include_new ? "0 0 8px var(--neon-cyan)" : undefined,
+              borderColor: settings?.include_new ? "var(--neon-cyan)" : "var(--border)",
+              background: settings?.include_new
+                ? "color-mix(in oklab, var(--neon-cyan) 25%, transparent)"
+                : "var(--secondary)",
             }}
-          />
-        </button>
-
-      <div className="mt-5 border-t border-border/60 pt-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-[0.7rem] font-semibold tracking-[0.18em] text-foreground uppercase">
-              Assign worker names
-            </p>
-            <p className="mt-1 text-[0.72rem] leading-relaxed text-foreground/90">
-              A miner added to the mesh is given the next free name in sequence, built from this prefix.
-            </p>
+          >
+            <span
+              className="absolute top-1/2 size-3.5 -translate-y-1/2 rounded-full transition-all"
+              style={{
+                left: settings?.include_new ? "calc(100% - 1.05rem)" : "0.15rem",
+                background: settings?.include_new ? "var(--neon-cyan)" : "var(--muted-foreground)",
+                boxShadow: settings?.include_new ? "0 0 8px var(--neon-cyan)" : undefined,
+              }}
+            />
+          </button>
           </div>
+        </div>
+
+        <div>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[0.7rem] font-semibold tracking-[0.18em] text-foreground uppercase">
+                Assign worker names
+              </p>
+              <p className="mt-1 text-[0.72rem] leading-relaxed text-foreground/90">
+                A miner added to the mesh is given the next free name in sequence, built from this prefix.
+              </p>
+            </div>
           <button
             type="button"
             role="switch"
@@ -334,31 +261,118 @@ export function MeshSettings() {
               }}
             />
           </button>
-        </div>
+          </div>
 
-        {settings?.auto_name && (
-          <>
-            <div className="mt-3 flex items-center gap-2">
-              <input
-                className={input}
-                placeholder="Worker"
-                value={prefix}
-                onChange={(e) => setPrefix(e.target.value)}
-                onBlur={savePrefix}
-                aria-label="Worker name prefix"
-              />
-              {settings.next_name && (
-                <span className="shrink-0 font-mono text-[0.72rem] text-neon-cyan">next: {settings.next_name}</span>
-              )}
+          {settings?.auto_name && (
+            <>
+              <div className="mt-3 flex items-center gap-2">
+                <input
+                  className={input}
+                  placeholder="Worker"
+                  value={prefix}
+                  onChange={(e) => setPrefix(e.target.value)}
+                  onBlur={savePrefix}
+                  aria-label="Worker name prefix"
+                />
+                {settings.next_name && (
+                  <span className="shrink-0 font-mono text-[0.72rem] text-neon-cyan">
+                    next: {settings.next_name}
+                  </span>
+                )}
+              </div>
+              <p className="mt-2 text-[0.68rem] leading-relaxed" style={{ color: "#e0115f" }}>
+                A miner added to the mesh will be renamed to the next available name in the sequence,
+                replacing the name it currently uses.
+              </p>
+            </>
+          )}
+        </div>
+      </div>
+      <div className="mt-5 border-t border-border/60 pt-4">
+          <div className="mt-2 flex items-center justify-between gap-3">
+            {settings?.network_start ? (
+              <button
+                type="button"
+                onClick={() => setOpen((o) => !o)}
+                aria-expanded={open}
+                className="flex items-center gap-1 text-[0.7rem] font-semibold tracking-[0.18em] text-foreground uppercase transition hover:text-neon-cyan"
+              >
+                {settings.miners_found} Miner{settings.miners_found === 1 ? "" : "s"} Discovered
+                <ChevronDown className={`size-3 transition-transform ${open ? "rotate-180" : ""}`} />
+              </button>
+            ) : (
+              <span className="text-[0.7rem] text-foreground/90">Not set</span>
+            )}
+            {settings?.network_start && (
+              <p className="mt-1 text-[0.68rem] leading-relaxed text-foreground/90">
+                Expand to see every miner found on your network, and whether each is on the mesh.
+              </p>
+            )}
+          </div>
+          {error && <p className="mt-2 text-[0.7rem] text-[#ff0080]">{error}</p>}
+          {open && (
+            <div className="mt-3 flex flex-col gap-2 border-t border-border/60 pt-3">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="mr-1 text-[0.6rem] font-semibold tracking-[0.18em] text-foreground/90 uppercase">Sort</span>
+                {FOUND_SORTS.map((o) => {
+                  const [cur, dir] = foundSort.split(":");
+                  const on = cur === o.key;
+                  return (
+                    <button
+                      key={o.key}
+                      type="button"
+                      aria-pressed={on}
+                      onClick={() => chooseFoundSort(o.key, o.first)}
+                      className="rounded-md border px-2 py-0.5 text-[0.65rem] font-semibold transition"
+                      style={{
+                        borderColor: on ? "var(--neon-cyan)" : "var(--border)",
+                        color: on ? "var(--neon-cyan)" : "var(--foreground)",
+                      }}
+                    >
+                      {o.label}
+                      {on && (dir === "asc" ? " ↑" : " ↓")}
+                    </button>
+                  );
+                })}
+              </div>
+              {found.length === 0 && <p className="text-[0.7rem] text-foreground/90">Reading miners…</p>}
+              {sortFound(found, foundSort).map((f) => {
+                const badge = f.on_mesh
+                  ? { label: `Mesh · ${f.mesh_coin}`, color: "var(--neon-cyan)" }
+                  : f.points_at_mesh
+                    ? { label: "Mesh · idle", color: "var(--neon-gold)" }
+                    : { label: "Direct", color: "var(--muted-foreground)" };
+                const temp = (t: number) => (t > 0 ? `${Math.round(t)}°` : "—");
+                return (
+                  <div key={f.host} className="rounded-lg border border-border/60 px-3 py-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="truncate text-[0.75rem] font-semibold" style={{ color: f.on_mesh || f.points_at_mesh ? badge.color : "var(--foreground)" }}>
+                        {f.worker}
+                      </span>
+                      <span
+                        className="shrink-0 rounded-md border px-1.5 py-0.5 text-[0.6rem] font-semibold"
+                        style={{ borderColor: badge.color, color: badge.color }}
+                      >
+                        {badge.label}
+                      </span>
+                    </div>
+                    <p className="mt-1 font-mono text-[0.65rem] text-foreground/90 whitespace-pre-wrap">
+                      Device: {f.model || "unknown"}  -  IP: {f.host}
+                    </p>
+                    <p className="mt-0.5 font-mono text-[0.65rem] text-foreground/90 whitespace-pre-wrap">
+                      Hashrate: <span className="text-neon-cyan">{f.hashrate_ths.toFixed(2)} TH/s</span>
+                      {"  -  "}Asic: {temp(f.asic_temp)}
+                      {f.asic_temp_max > 0 && ` / ${temp(f.asic_temp_max)} max`}
+                      {"  -  "}VR: {temp(f.vr_temp)}
+                    </p>
+                  </div>
+                );
+              })}
             </div>
-            <p className="mt-2 text-[0.68rem] leading-relaxed text-neon-gold">
-              A miner added to the mesh will be renamed to the next available name in the sequence,
-              replacing the name it currently uses.
-            </p>
-          </>
-        )}
+          )}
+        </div>
       </div>
-      </div>
+
     </section>
   );
 }

@@ -162,9 +162,9 @@ export function NexusShell() {
         ) : tab === "Nexus" ? (
           <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1fr)]">
             <div className="flex flex-col gap-4">
-              <MeshSettings />
               <MeshDefault apps={apps} mesh={mesh} refresh={refreshMesh} />
               <MeshRotation mesh={mesh} refresh={refreshMesh} />
+              <MeshSettings />
             </div>
             <MeshPanel
               apps={apps}
