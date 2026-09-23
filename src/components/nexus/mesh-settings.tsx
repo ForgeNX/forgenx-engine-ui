@@ -52,6 +52,10 @@ export function MeshSettings() {
   const [open, setOpen] = useState(false);
   const [found, setFound] = useState<FoundMiner[]>([]);
   const [foundSort, setFoundSort] = useState("name:asc");
+  // The worker name each discovered miner would take on the mesh. Held here while
+  // the user decides: it is only needed at the moment a miner is moved across.
+  const [renames, setRenames] = useState<Record<string, string>>({});
+  const [overrides, setOverrides] = useState<Record<string, boolean>>({});
   const [prefix, setPrefix] = useState("");
   const savePrefix = async () => {
     const res = await saveMeshSettings({ name_prefix: prefix.trim() });
@@ -365,6 +369,61 @@ export function MeshSettings() {
                       {f.asic_temp_max > 0 && ` / ${temp(f.asic_temp_max)} max`}
                       {"  -  "}VR: {temp(f.vr_temp)}
                     </p>
+                    {!f.on_mesh && (
+                      <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                        <span className="text-[0.65rem] text-foreground/90">Worker name:</span>
+                        <input
+                          className="w-40 rounded-md border border-border/70 bg-secondary/25 px-2 py-0.5 font-mono text-[0.65rem] text-foreground focus:border-neon-cyan focus:outline-none disabled:opacity-60"
+                          value={
+                            settings?.auto_name
+                              ? settings.next_name
+                              : overrides[f.host]
+                                ? (renames[f.host] ?? "")
+                                : f.worker
+                          }
+                          disabled={Boolean(settings?.auto_name) || !overrides[f.host]}
+                          onChange={(e) => setRenames((r) => ({ ...r, [f.host]: e.target.value }))}
+                          aria-label={`Worker name for ${f.worker}`}
+                        />
+                        {settings?.auto_name ? (
+                          <span className="text-[0.62rem] text-muted-foreground">assigned automatically</span>
+                        ) : (
+                          <button
+                            type="button"
+                            role="switch"
+                            aria-checked={Boolean(overrides[f.host])}
+                            aria-label={`Override the worker name for ${f.worker}`}
+                            onClick={() =>
+                              setOverrides((o) => {
+                                const on = !o[f.host];
+                                if (on) setRenames((r) => ({ ...r, [f.host]: r[f.host] ?? f.worker }));
+                                return { ...o, [f.host]: on };
+                              })
+                            }
+                            className="flex items-center gap-1.5 text-[0.62rem] text-muted-foreground transition hover:text-neon-cyan"
+                          >
+                            <span
+                              className="relative h-3.5 w-6 rounded-full border transition"
+                              style={{
+                                borderColor: overrides[f.host] ? "var(--neon-cyan)" : "var(--border)",
+                                background: overrides[f.host]
+                                  ? "color-mix(in oklab, var(--neon-cyan) 25%, transparent)"
+                                  : "var(--secondary)",
+                              }}
+                            >
+                              <span
+                                className="absolute top-1/2 size-2 -translate-y-1/2 rounded-full transition-all"
+                                style={{
+                                  left: overrides[f.host] ? "calc(100% - 0.6rem)" : "0.15rem",
+                                  background: overrides[f.host] ? "var(--neon-cyan)" : "var(--muted-foreground)",
+                                }}
+                              />
+                            </span>
+                            change
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })}
