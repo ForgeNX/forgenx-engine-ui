@@ -818,3 +818,21 @@ export type MeshOverview = {
   lost?: number;
   nodes: { coin: string; miners: number; ths: number }[];
 };
+
+// A share the pool refused, and why. Kept by the engine for the last few per
+// worker, for every miner rather than only meshed ones.
+export type Rejection = {
+  at: string;
+  coin: string;
+  worker: string;
+  reason: string;
+  detail: string;
+  job_id: string;
+  required: number;
+  actual: number;
+};
+
+export async function fetchRejections(): Promise<Record<string, Rejection[]>> {
+  const r = await fetchJSON<{ rejections: Record<string, Rejection[]> }>("/api/miners/rejections");
+  return r?.rejections ?? {};
+}

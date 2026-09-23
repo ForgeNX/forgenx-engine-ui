@@ -1,6 +1,7 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { Link2Off } from "lucide-react";
 import { AnimatedBeam } from "./animated-beam";
+import { RejectionList } from "./rejection-list";
 import { parseAllocation, type MeshMiner } from "@/lib/forge-api";
 import type { ForgeApp } from "./nexus-data";
 
@@ -47,6 +48,8 @@ export function MinerPill({
   onSelect: () => void;
   onToggleSystem?: (on: boolean) => void;
 }) {
+  // The refused shares behind the counts, shown on request.
+  const [showRejections, setShowRejections] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const fromRef = useRef<HTMLSpanElement>(null);
   const nodeRefs = [
@@ -156,13 +159,34 @@ export function MinerPill({
             <span className="text-[0.6rem] tracking-[0.14em] text-foreground/90 uppercase">Shares:</span>
             <span style={{ color: "var(--neon-green)" }}>{miner.shares_accepted ?? 0} accepted</span>
             <span className="text-foreground/50">/</span>
-            <span style={{ color: (miner.shares_rejected ?? 0) > 0 ? "#ff0080" : "var(--foreground)" }}>
-            {miner.shares_rejected ?? 0} rejected
-            </span>
-            <span className="text-foreground/50">/</span>
-            <span style={{ color: (miner.shares_stale ?? 0) > 0 ? "var(--neon-gold)" : "var(--foreground)" }}>
-            {miner.shares_stale ?? 0} stale
-            </span>
+            {(miner.shares_rejected ?? 0) + (miner.shares_stale ?? 0) > 0 ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowRejections((v) => !v);
+                }}
+                className="flex items-baseline gap-2 underline decoration-dotted underline-offset-2"
+              >
+              <span style={{ color: (miner.shares_rejected ?? 0) > 0 ? "#ff0080" : "var(--foreground)" }}>
+              {miner.shares_rejected ?? 0} rejected
+              </span>
+              <span className="text-foreground/50">/</span>
+              <span style={{ color: (miner.shares_stale ?? 0) > 0 ? "var(--neon-gold)" : "var(--foreground)" }}>
+              {miner.shares_stale ?? 0} stale
+              </span>
+              </button>
+            ) : (
+              <>
+              <span style={{ color: (miner.shares_rejected ?? 0) > 0 ? "#ff0080" : "var(--foreground)" }}>
+              {miner.shares_rejected ?? 0} rejected
+              </span>
+              <span className="text-foreground/50">/</span>
+              <span style={{ color: (miner.shares_stale ?? 0) > 0 ? "var(--neon-gold)" : "var(--foreground)" }}>
+              {miner.shares_stale ?? 0} stale
+              </span>
+              </>
+            )}
             {(miner.shares_lost ?? 0) > 0 && (
               <>
                 <span className="text-foreground/50">·</span>
@@ -279,6 +303,7 @@ export function MinerPill({
           <span className="text-[0.75rem] text-foreground/90">Fleet Balance</span>
         </span>
       )}
+      {showRejections && <RejectionList worker={miner.worker} />}
     </div>
   );
 }
