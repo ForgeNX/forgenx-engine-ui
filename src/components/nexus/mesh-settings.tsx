@@ -52,6 +52,20 @@ export function MeshSettings() {
   const [open, setOpen] = useState(false);
   const [found, setFound] = useState<FoundMiner[]>([]);
   const [foundSort, setFoundSort] = useState("name:asc");
+  const [prefix, setPrefix] = useState("");
+  const savePrefix = async () => {
+    const res = await saveMeshSettings({ name_prefix: prefix.trim() });
+    if (res.ok && res.settings) setSettings(res.settings);
+    else setError(res.error ?? "could not save");
+  };
+  const toggleAutoName = async () => {
+    if (!settings) return;
+    const next = !settings.auto_name;
+    setSettings({ ...settings, auto_name: next });
+    const res = await saveMeshSettings({ auto_name: next });
+    if (res.ok && res.settings) setSettings(res.settings);
+    else setSettings({ ...settings, auto_name: !next });
+  };
   const chooseFoundSort = (key: FoundSortKey, first: "asc" | "desc") => {
     const [cur, dir] = foundSort.split(":");
     const next = cur === key ? `${key}:${dir === "asc" ? "desc" : "asc"}` : `${key}:${first}`;
@@ -82,6 +96,7 @@ export function MeshSettings() {
     setStart(s.network_start);
     setEnd(s.network_end);
     if (s.discovered_sort) setFoundSort(s.discovered_sort);
+    setPrefix(s.name_prefix ?? "");
   };
 
   useEffect(() => {
@@ -284,6 +299,65 @@ export function MeshSettings() {
             }}
           />
         </button>
+
+      <div className="mt-5 border-t border-border/60 pt-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[0.7rem] font-semibold tracking-[0.18em] text-foreground uppercase">
+              Assign worker names
+            </p>
+            <p className="mt-1 text-[0.72rem] leading-relaxed text-foreground/90">
+              A miner added to the mesh is given the next free name in sequence, built from this prefix.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={settings?.auto_name ?? false}
+            aria-label="Assign worker names automatically"
+            disabled={!settings}
+            onClick={toggleAutoName}
+            className="relative h-5 w-9 shrink-0 rounded-full border transition disabled:opacity-40"
+            style={{
+              borderColor: settings?.auto_name ? "var(--neon-cyan)" : "var(--border)",
+              background: settings?.auto_name
+                ? "color-mix(in oklab, var(--neon-cyan) 25%, transparent)"
+                : "var(--secondary)",
+            }}
+          >
+            <span
+              className="absolute top-1/2 size-3.5 -translate-y-1/2 rounded-full transition-all"
+              style={{
+                left: settings?.auto_name ? "calc(100% - 1.05rem)" : "0.15rem",
+                background: settings?.auto_name ? "var(--neon-cyan)" : "var(--muted-foreground)",
+                boxShadow: settings?.auto_name ? "0 0 8px var(--neon-cyan)" : undefined,
+              }}
+            />
+          </button>
+        </div>
+
+        {settings?.auto_name && (
+          <>
+            <div className="mt-3 flex items-center gap-2">
+              <input
+                className={input}
+                placeholder="Worker"
+                value={prefix}
+                onChange={(e) => setPrefix(e.target.value)}
+                onBlur={savePrefix}
+                aria-label="Worker name prefix"
+              />
+              {settings.next_name && (
+                <span className="shrink-0 font-mono text-[0.72rem] text-neon-cyan">next: {settings.next_name}</span>
+              )}
+            </div>
+            <p className="mt-2 text-[0.68rem] leading-relaxed text-neon-gold">
+              A miner added to the mesh will be renamed to the next available name in the sequence,
+              replacing the name it currently uses.
+            </p>
+          </>
+        )}
+      </div>
       </div>
     </section>
   );
