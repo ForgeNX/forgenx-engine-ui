@@ -571,6 +571,7 @@ export type MeshMiner = {
   shares_rejected?: number;
   shares_stale?: number;
   shares_lost?: number; // leftover work from before a reconnect, answered by the relay
+  pending_coin?: string; // a switch waiting for this coin's next job
   difficulty?: number; // current, on the coin it is mining
   next_difficulty?: number; // a change waiting for the next block; 0 when none
 };

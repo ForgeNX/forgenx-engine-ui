@@ -74,6 +74,12 @@ export function MinerPill({
     .filter((sym) => (miner.assigned && !isAuto ? (alloc[sym] ?? 0) > 0 : sym === active))
     .slice(0, nodeRefs.length);
 
+  // A deferred switch waits for its target's next job, which on a quiet coin can
+  // be minutes. Showing the coin it is moving to makes that visible rather than
+  // looking like nothing is happening.
+  const pending = (miner.pending_coin ?? "").toUpperCase();
+  const beams = pending && !routed.includes(pending) ? [...routed, pending].slice(0, nodeRefs.length) : routed;
+
   const hashrate = (th: number) =>
     th >= 1000 ? `${(th / 1000).toFixed(2)} PH/s` : `${th.toFixed(2)} TH/s`;
 
@@ -171,9 +177,10 @@ export function MinerPill({
             would move a node up or down depending on how many there are, so the
             beam's endpoint would shift as the allocation changed. */}
         <div className="mt-0.5 flex shrink-0 flex-col items-start gap-2.5">
-          {routed.map((sym, i) => {
+          {beams.map((sym, i) => {
             const app = appFor(sym);
             const isActive = active === sym;
+            const isPending = pending === sym && !isActive;
             return (
               <span key={sym} className="z-10 flex items-center gap-2">
                 <span
@@ -191,23 +198,28 @@ export function MinerPill({
                 >
                   {app?.ticker ?? sym}
                 </span>
-                {miner.assigned && (
-                  <span className="font-mono text-[0.7rem] text-foreground/90">
-                    {isAuto ? "Fleet" : `${alloc[sym] ?? 0}%`}
-                  </span>
+                {isPending ? (
+                  <span className="font-mono text-[0.7rem] text-neon-gold">moving here</span>
+                ) : (
+                  miner.assigned && (
+                    <span className="font-mono text-[0.7rem] text-foreground/90">
+                      {isAuto ? "Fleet" : `${alloc[sym] ?? 0}%`}
+                    </span>
+                  )
                 )}
               </span>
             );
           })}
-          {routed.length === 0 && (
+          {beams.length === 0 && (
             <span className="text-[0.7rem] text-muted-foreground">no node allocated</span>
           )}
         </div>
 
-        {routed.map((sym, i) => {
+        {beams.map((sym, i) => {
           const app = appFor(sym);
           const isActive = active === sym;
           const colour = app?.color ?? "var(--neon-cyan)";
+          const isPending = pending === sym && !isActive;
           return (
             <AnimatedBeam
               key={`beam-${miner.worker}-${sym}`}
@@ -215,11 +227,11 @@ export function MinerPill({
               fromRef={fromRef}
               toRef={nodeRefs[i]}
               duration={3}
-              pathColor={isActive ? "#4c566a" : "#ffffff"}
-              pathOpacity={isActive ? 0.5 : 0.18}
+              pathColor={isActive ? "#4c566a" : isPending ? "#8a7a3d" : "#ffffff"}
+              pathOpacity={isActive ? 0.5 : isPending ? 0.22 : 0.18}
               pathWidth={1.5}
-              gradientStartColor={isActive ? colour : "#8b93a7"}
-              gradientStopColor={isActive ? "var(--neon-cyan)" : "#8b93a7"}
+              gradientStartColor={isActive ? colour : isPending ? "var(--neon-gold)" : "#8b93a7"}
+              gradientStopColor={isActive ? "var(--neon-cyan)" : isPending ? "var(--neon-gold)" : "#8b93a7"}
               // A warm node is genuinely live — connected, authorized and taking
               // jobs — so its beam keeps moving rather than going dead. It runs
               // dimmer than the active one, in step with it, so the bright beam
