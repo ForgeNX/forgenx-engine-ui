@@ -1,4 +1,5 @@
 import { Activity } from "lucide-react";
+import { ShineBorder } from "./shine-border";
 import type { MeshOverview } from "@/lib/forge-api";
 import type { ForgeApp } from "./nexus-data";
 
@@ -42,7 +43,12 @@ export function MeshOverviewPill({ apps, overview }: { apps: ForgeApp[]; overvie
   const up = uptime(overview.since);
 
   return (
-    <div className="rounded-xl border border-border/70 p-4" style={{ background: "color-mix(in oklab, var(--secondary) 25%, transparent)" }}>
+    <div className="relative overflow-hidden rounded-xl border border-border/70 p-4" style={{ background: "color-mix(in oklab, var(--secondary) 25%, transparent)" }}>
+      <ShineBorder
+        borderWidth={1.5}
+        duration={14}
+        shineColor={["var(--neon-cyan)", "var(--neon-green)", "var(--neon-cyan)"]}
+      />
       <div className="flex items-center justify-between gap-2">
         <span className="flex items-center gap-2">
           <Activity className="size-4 text-neon-cyan" />
@@ -93,6 +99,7 @@ export function MeshOverviewPill({ apps, overview }: { apps: ForgeApp[]; overvie
           })}
         </div>
       )}
-    </div>
+
+          </div>
   );
 }

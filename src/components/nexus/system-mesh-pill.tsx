@@ -1,4 +1,5 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { AnimatedBeam } from "./animated-beam";
 import { parseAllocation, type MeshStatus } from "@/lib/forge-api";
 import type { ForgeApp } from "./nexus-data";
@@ -25,6 +26,7 @@ export function SystemMeshPill({
   selected: boolean;
   onSelect: () => void;
 }) {
+  const [showMiners, setShowMiners] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const fromRef = useRef<HTMLSpanElement>(null);
   // Beams need a ref per endpoint and hooks cannot be called in a loop, so the
@@ -54,11 +56,18 @@ export function SystemMeshPill({
   const coins = mesh.coins.map((c) => c.toUpperCase()).slice(0, nodeRefs.length);
 
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onSelect}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSelect();
+        }
+      }}
       aria-pressed={selected}
-      className="rounded-xl border p-4 text-left transition hover:-translate-y-0.5"
+      className="cursor-pointer rounded-xl border p-4 text-left transition hover:-translate-y-0.5"
       style={{
         borderColor: selected ? "var(--neon-cyan)" : "color-mix(in oklab, var(--neon-cyan) 40%, var(--border))",
         background: selected
@@ -71,10 +80,26 @@ export function SystemMeshPill({
           <span ref={fromRef} className="font-display block w-fit text-sm font-bold text-neon-cyan">
             Fleet Balance
           </span>
-          <span className="mt-0.5 block font-mono text-[0.72rem] text-foreground/90">
-            {included.length} miner{included.length === 1 ? "" : "s"}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowMiners((v) => !v);
+            }}
+            aria-expanded={showMiners}
+            className="mt-0.5 flex items-center gap-1 font-mono text-[0.8rem] text-foreground/90 transition hover:text-neon-cyan"
+          >
+            {included.length} Miner{included.length === 1 ? "" : "s"}
+            <ChevronDown className={`size-3 transition-transform ${showMiners ? "rotate-180" : ""}`} />
+          </button>
+          {showMiners && (
+            <span className="mt-1 block font-mono text-[0.7rem] text-foreground/90">
+              {included.length === 0 ? "none yet" : included.map((m) => m.worker).join(", ")}
+            </span>
+          )}
+          <span className="mt-0.5 block font-mono text-[0.8rem] text-foreground/90">
+            Total Hashrate: <span className="text-neon-cyan">{total.toFixed(2)} TH/s</span>
           </span>
-          <span className="mt-0.5 block font-mono text-[0.72rem] text-neon-cyan">{total.toFixed(2)} TH/s</span>
         </div>
 
         <div className="mt-0.5 flex shrink-0 flex-col items-start gap-2.5">
@@ -145,6 +170,6 @@ export function SystemMeshPill({
       {!mesh.system_target && (
         <p className="mt-3 text-[0.7rem] text-foreground/90">No target set - select to choose a split.</p>
       )}
-    </button>
+    </div>
   );
 }
