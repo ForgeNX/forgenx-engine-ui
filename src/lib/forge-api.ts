@@ -862,3 +862,13 @@ export async function moveMinerToMesh(
     return { ok: false, error: "request failed" };
   }
 }
+
+// Sweeps the miner network now rather than waiting for the next scheduled one.
+export async function rescanMiners(): Promise<boolean> {
+  try {
+    const res = await fetch("/api/miners/rescan", { method: "POST" });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}

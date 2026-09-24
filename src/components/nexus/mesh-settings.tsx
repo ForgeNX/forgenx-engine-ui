@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, RefreshCw } from "lucide-react";
 import {
   fetchFoundMiners,
   fetchMeshSettings,
   moveMinerToMesh,
+  rescanMiners,
   saveMeshSettings,
   type FoundMiner,
   type MeshSettings as Settings,
@@ -62,6 +63,19 @@ export function MeshSettings() {
   const [confirming, setConfirming] = useState<string | null>(null);
   const [moving, setMoving] = useState<string | null>(null);
   const [moveNote, setMoveNote] = useState<Record<string, string>>({});
+  const [scanning, setScanning] = useState(false);
+  const rescan = async () => {
+    setScanning(true);
+    await rescanMiners();
+    // A sweep takes a few seconds; give it time before reading the list back.
+    setTimeout(async () => {
+      const list = await fetchFoundMiners();
+      setFound(list);
+      const s2 = await fetchMeshSettings();
+      if (s2) setSettings(s2);
+      setScanning(false);
+    }, 20_000);
+  };
 
   const nameFor = (f: FoundMiner) =>
     settings?.auto_name ? settings.next_name : overrides[f.host] ? (renames[f.host] ?? "") : f.worker;
@@ -365,6 +379,18 @@ export function MeshSettings() {
               </button>
             ) : (
               <span className="text-[0.7rem] text-foreground/90">Not set</span>
+            )}
+            {settings?.network_start && (
+              <button
+                type="button"
+                onClick={rescan}
+                disabled={scanning}
+                title="Scan the network now"
+                className="flex items-center gap-1 text-[0.65rem] text-muted-foreground transition hover:text-neon-cyan disabled:opacity-50"
+              >
+                <RefreshCw className={`size-3 ${scanning ? "animate-spin" : ""}`} />
+                {scanning ? "Scanning…" : "Rescan"}
+              </button>
             )}
             {settings?.network_start && (
               <p className="mt-1 text-[0.68rem] leading-relaxed text-foreground/90">
