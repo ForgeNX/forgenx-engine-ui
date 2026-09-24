@@ -99,9 +99,14 @@ export function MeshSettings() {
   };
   const [prefix, setPrefix] = useState("");
   const [address, setAddress] = useState("");
+  const [addressSaved, setAddressSaved] = useState(false);
   const saveAddress = async () => {
     const res = await saveMeshSettings({ mesh_address: address.trim() });
-    if (res.ok && res.settings) setSettings(res.settings);
+    if (res.ok && res.settings) {
+      setSettings(res.settings);
+      setAddressSaved(true);
+      setTimeout(() => setAddressSaved(false), 3000);
+    }
     else setError(res.error ?? "could not save");
   };
   const savePrefix = async () => {
@@ -215,16 +220,18 @@ export function MeshSettings() {
           Where to look for miners, so their own hashrate and temperatures can be read. A network such as
           192.168.1.0/24, or a start and end address.
         </p>
-        <div className="mt-3 grid grid-cols-2 gap-2">
+        <div className="mt-3 flex flex-wrap items-center gap-2">
           <input
-            className={input}
+            className={`${input} !w-auto`}
+            size={Math.max(start.length, 14)}
             placeholder="192.168.1.0/24"
             value={start}
             onChange={(e) => setStart(e.target.value)}
             aria-label="Network or start address"
           />
           <input
-            className={input}
+            className={`${input} !w-auto`}
+            size={Math.max(end.length, 14)}
             placeholder="End (optional)"
             value={end}
             onChange={(e) => setEnd(e.target.value)}
@@ -252,9 +259,10 @@ export function MeshSettings() {
           The address a miner is pointed at when you add it to the mesh. It must be one your miners
           can reach.
         </p>
-        <div className="mt-2 flex items-center gap-2">
+        <div className="mt-2 flex flex-wrap items-center gap-2">
           <input
-            className={input}
+            className={`${input} !w-auto`}
+            size={Math.max(address.length, 14)}
             placeholder="192.168.1.10"
             value={address}
             onChange={(e) => setAddress(e.target.value)}
@@ -262,8 +270,9 @@ export function MeshSettings() {
             aria-label="Mesh address for miners"
           />
           {settings?.mesh_port ? (
-            <span className="shrink-0 font-mono text-[0.72rem] text-neon-cyan">port {settings.mesh_port}</span>
+            <span className="font-mono text-[0.85rem] text-neon-cyan">: {settings.mesh_port}</span>
           ) : null}
+          {addressSaved && <span className="text-[0.65rem] text-muted-foreground">saved</span>}
         </div>
       </div>
       <div className="mt-5 grid grid-cols-2 gap-5 border-t border-border/60 pt-4">
@@ -386,9 +395,10 @@ export function MeshSettings() {
                 onClick={rescan}
                 disabled={scanning}
                 title="Scan the network now"
-                className="flex items-center gap-1 text-[0.65rem] text-muted-foreground transition hover:text-neon-cyan disabled:opacity-50"
+                className="flex items-center gap-1.5 text-[0.75rem] font-semibold transition disabled:opacity-100"
+                style={{ color: scanning ? "var(--neon-gold)" : "var(--neon-cyan)" }}
               >
-                <RefreshCw className={`size-3 ${scanning ? "animate-spin" : ""}`} />
+                <RefreshCw className={`size-3.5 ${scanning ? "animate-spin" : ""}`} />
                 {scanning ? "Scanning…" : "Rescan"}
               </button>
             )}

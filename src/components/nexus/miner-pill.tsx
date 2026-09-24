@@ -311,7 +311,7 @@ export function MinerPill({
               }}
             />
           </button>
-          <span className="text-[0.75rem] text-foreground/90">Fleet Balance</span>
+          <span className="text-[0.75rem] text-foreground/90">Include in Fleet Balance</span>
         </span>
       )}
       {showRejections && <RejectionList worker={miner.worker} />}
