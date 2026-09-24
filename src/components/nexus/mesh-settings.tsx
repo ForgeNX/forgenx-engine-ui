@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { ChevronDown, RefreshCw } from "lucide-react";
+import { MoveToMeshModal } from "./move-to-mesh-modal";
 import {
   fetchFoundMiners,
   fetchMeshSettings,
@@ -526,28 +527,6 @@ export function MeshSettings() {
                             <span className="text-neon-cyan">ⓘ Note:</span> This miner's firmware cannot be
                             given a new pool — add the mesh on the miner itself.
                           </span>
-                        ) : confirming === f.host ? (
-                          <>
-                            <span className="text-[0.62rem] text-foreground/90">
-                              Point {f.worker} at {settings?.mesh_address}:{settings?.mesh_port} as{" "}
-                              <span className="font-mono text-neon-cyan">{nameFor(f)}</span>? It will restart.
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => doMove(f)}
-                              className="rounded-md border px-2 py-0.5 text-[0.62rem] font-semibold transition"
-                              style={{ borderColor: "var(--neon-cyan)", color: "var(--neon-cyan)" }}
-                            >
-                              Confirm
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setConfirming(null)}
-                              className="rounded-md border border-border/70 px-2 py-0.5 text-[0.62rem] font-semibold text-foreground transition"
-                            >
-                              Cancel
-                            </button>
-                          </>
                         ) : (
                           <button
                             type="button"
@@ -555,9 +534,19 @@ export function MeshSettings() {
                               moving === f.host || !settings?.mesh_address || !nameFor(f).trim()
                             }
                             onClick={() => setConfirming(f.host)}
-                            className="rounded-md border border-border/70 px-2 py-0.5 text-[0.62rem] font-semibold text-foreground transition hover:border-neon-cyan hover:text-neon-cyan disabled:opacity-40"
+                            className="relative overflow-hidden rounded-md border px-2 py-0.5 text-[0.62rem] font-semibold transition disabled:opacity-40"
+                            style={{ borderColor: "var(--neon-cyan)", color: "var(--neon-cyan)" }}
                           >
-                            {moving === f.host ? "Moving…" : "Move to mesh"}
+                            <span
+                              aria-hidden
+                              className="pointer-events-none absolute inset-y-0 w-1/3"
+                              style={{
+                                background:
+                                  "linear-gradient(90deg, transparent, color-mix(in oklab, var(--neon-cyan) 45%, transparent), transparent)",
+                                animation: "flow-right 2.6s linear infinite",
+                              }}
+                            />
+                            <span className="relative">{moving === f.host ? "Moving…" : "Move to mesh"}</span>
                           </button>
                         )}
                         {moveNote[f.host] && (
@@ -572,6 +561,38 @@ export function MeshSettings() {
           )}
         </div>
       </div>
+
+
+    {confirming && (() => {
+
+      const f = found.find((x) => x.host === confirming);
+
+      if (!f) return null;
+
+      return (
+
+        <MoveToMeshModal
+
+          miner={f}
+
+          worker={nameFor(f).trim()}
+
+          address={settings?.mesh_address ?? ""}
+
+          port={settings?.mesh_port ?? 0}
+      includeNew={Boolean(settings?.include_new)}
+
+          busy={moving === f.host}
+
+          onConfirm={() => doMove(f)}
+
+          onCancel={() => setConfirming(null)}
+
+        />
+
+      );
+
+    })()}
 
     </section>
   );
