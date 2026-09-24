@@ -586,6 +586,8 @@ export type MeshSettings = {
   auto_name: boolean;
   name_prefix: string;
   next_name: string; // the name the next miner added to the mesh would be given
+  mesh_address: string; // the address miners are pointed at when added to the mesh
+  mesh_port: number;
 };
 
 export async function fetchMeshSettings(): Promise<MeshSettings | null> {
@@ -595,7 +597,7 @@ export async function fetchMeshSettings(): Promise<MeshSettings | null> {
 // Saves whichever settings are given. The engine validates the range and
 // answers with the reason when it rejects one, which is passed back as error.
 export async function saveMeshSettings(
-  patch: Partial<Pick<MeshSettings, "network_start" | "network_end" | "include_new" | "miner_sort" | "discovered_sort" | "auto_name" | "name_prefix">>,
+  patch: Partial<Pick<MeshSettings, "network_start" | "network_end" | "include_new" | "miner_sort" | "discovered_sort" | "auto_name" | "name_prefix" | "mesh_address">>,
 ): Promise<{ ok: boolean; settings?: MeshSettings; error?: string }> {
   try {
     const res = await fetch("/api/mesh/settings", {
@@ -838,4 +840,25 @@ export type Rejection = {
 export async function fetchRejections(): Promise<Record<string, Rejection[]>> {
   const r = await fetchJSON<{ rejections: Record<string, Rejection[]> }>("/api/miners/rejections");
   return r?.rejections ?? {};
+}
+
+// Points a miner at the mesh: its pool, protocol and worker name. Only AxeOS
+// miners can be moved this way - an Avalon's firmware has no command to add or
+// change a pool. The miner restarts, so it takes a minute to come back.
+export async function moveMinerToMesh(
+  host: string,
+  worker: string,
+): Promise<{ ok: boolean; note?: string; error?: string }> {
+  try {
+    const res = await fetch("/api/miners/move-to-mesh", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ host, worker }),
+    });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok) return { ok: false, error: j.error ?? "the miner would not take the change" };
+    return { ok: true, note: j.note };
+  } catch {
+    return { ok: false, error: "request failed" };
+  }
 }

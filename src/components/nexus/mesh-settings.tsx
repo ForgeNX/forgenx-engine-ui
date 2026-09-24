@@ -3,6 +3,7 @@ import { ChevronDown } from "lucide-react";
 import {
   fetchFoundMiners,
   fetchMeshSettings,
+  moveMinerToMesh,
   saveMeshSettings,
   type FoundMiner,
   type MeshSettings as Settings,
@@ -56,7 +57,39 @@ export function MeshSettings() {
   // the user decides: it is only needed at the moment a miner is moved across.
   const [renames, setRenames] = useState<Record<string, string>>({});
   const [overrides, setOverrides] = useState<Record<string, boolean>>({});
+  // Moving a miner writes to someone's hardware, so it asks first and says what
+  // happened afterwards, per miner.
+  const [confirming, setConfirming] = useState<string | null>(null);
+  const [moving, setMoving] = useState<string | null>(null);
+  const [moveNote, setMoveNote] = useState<Record<string, string>>({});
+
+  const nameFor = (f: FoundMiner) =>
+    settings?.auto_name ? settings.next_name : overrides[f.host] ? (renames[f.host] ?? "") : f.worker;
+
+  const doMove = async (f: FoundMiner) => {
+    const worker = nameFor(f).trim();
+    setConfirming(null);
+    setMoving(f.host);
+    const res = await moveMinerToMesh(f.host, worker);
+    setMoving(null);
+    setMoveNote((n) => ({ ...n, [f.host]: res.ok ? (res.note ?? "moved") : (res.error ?? "failed") }));
+    if (res.ok) {
+      // The miner restarts and reconnects; the list catches up on its own.
+      setTimeout(async () => {
+        const list = await fetchFoundMiners();
+        setFound(list);
+        const s2 = await fetchMeshSettings();
+        if (s2) setSettings(s2);
+      }, 75_000);
+    }
+  };
   const [prefix, setPrefix] = useState("");
+  const [address, setAddress] = useState("");
+  const saveAddress = async () => {
+    const res = await saveMeshSettings({ mesh_address: address.trim() });
+    if (res.ok && res.settings) setSettings(res.settings);
+    else setError(res.error ?? "could not save");
+  };
   const savePrefix = async () => {
     const res = await saveMeshSettings({ name_prefix: prefix.trim() });
     if (res.ok && res.settings) setSettings(res.settings);
@@ -101,6 +134,10 @@ export function MeshSettings() {
     setEnd(s.network_end);
     if (s.discovered_sort) setFoundSort(s.discovered_sort);
     setPrefix(s.name_prefix ?? "");
+    // Prefilled from however you reached ForgeNX, which is usually the address
+    // miners can reach too - but confirmed rather than assumed, since a miner
+    // pointed somewhere unreachable fails quietly.
+    setAddress(s.mesh_address || window.location.hostname);
   };
 
   useEffect(() => {
@@ -193,6 +230,28 @@ export function MeshSettings() {
           </button>
         </div>
       {/* Two mesh-wide settings, side by side so their headings and toggles line up. */}
+      <div className="mt-5 border-t border-border/60 pt-4">
+        <p className="text-[0.7rem] font-semibold tracking-[0.18em] text-foreground uppercase">
+          Mesh address for miners
+        </p>
+        <p className="mt-1 text-[0.72rem] leading-relaxed text-foreground/90">
+          The address a miner is pointed at when you add it to the mesh. It must be one your miners
+          can reach.
+        </p>
+        <div className="mt-2 flex items-center gap-2">
+          <input
+            className={input}
+            placeholder="192.168.1.10"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            onBlur={saveAddress}
+            aria-label="Mesh address for miners"
+          />
+          {settings?.mesh_port ? (
+            <span className="shrink-0 font-mono text-[0.72rem] text-neon-cyan">port {settings.mesh_port}</span>
+          ) : null}
+        </div>
+      </div>
       <div className="mt-5 grid grid-cols-2 gap-5 border-t border-border/60 pt-4">
         <div>
           <div className="flex items-start justify-between gap-3">
@@ -284,10 +343,10 @@ export function MeshSettings() {
                   </span>
                 )}
               </div>
-              <p className="mt-2 text-[0.68rem] leading-relaxed" style={{ color: "#e0115f" }}>
-                A miner added to the mesh will be renamed to the next available name in the sequence,
-                replacing the name it currently uses.
-              </p>
+              <p className="mt-2 text-[0.68rem] leading-relaxed text-foreground">
+                  <span style={{ color: "#e0115f" }}>⚠ Warning:</span> A miner added to the mesh will be
+                  renamed to the next available name in the sequence, replacing the name it currently uses.
+                </p>
             </>
           )}
         </div>
@@ -421,6 +480,52 @@ export function MeshSettings() {
                             </span>
                             change
                           </button>
+                        )}
+                      </div>
+                    )}
+                    {!f.on_mesh && (
+                      <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                        {f.driver !== "axeos" ? (
+                          <span className="text-[0.62rem] text-foreground">
+                            <span className="text-neon-cyan">ⓘ Note:</span> This miner's firmware cannot be
+                            given a new pool — add the mesh on the miner itself.
+                          </span>
+                        ) : confirming === f.host ? (
+                          <>
+                            <span className="text-[0.62rem] text-foreground/90">
+                              Point {f.worker} at {settings?.mesh_address}:{settings?.mesh_port} as{" "}
+                              <span className="font-mono text-neon-cyan">{nameFor(f)}</span>? It will restart.
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => doMove(f)}
+                              className="rounded-md border px-2 py-0.5 text-[0.62rem] font-semibold transition"
+                              style={{ borderColor: "var(--neon-cyan)", color: "var(--neon-cyan)" }}
+                            >
+                              Confirm
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setConfirming(null)}
+                              className="rounded-md border border-border/70 px-2 py-0.5 text-[0.62rem] font-semibold text-foreground transition"
+                            >
+                              Cancel
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled={
+                              moving === f.host || !settings?.mesh_address || !nameFor(f).trim()
+                            }
+                            onClick={() => setConfirming(f.host)}
+                            className="rounded-md border border-border/70 px-2 py-0.5 text-[0.62rem] font-semibold text-foreground transition hover:border-neon-cyan hover:text-neon-cyan disabled:opacity-40"
+                          >
+                            {moving === f.host ? "Moving…" : "Move to mesh"}
+                          </button>
+                        )}
+                        {moveNote[f.host] && (
+                          <span className="text-[0.62rem] text-muted-foreground">{moveNote[f.host]}</span>
                         )}
                       </div>
                     )}
