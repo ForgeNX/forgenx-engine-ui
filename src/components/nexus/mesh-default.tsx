@@ -12,6 +12,8 @@ import type { ForgeApp } from "./nexus-data";
 // Coins installed but absent from the mesh configuration are listed dimmed rather
 // than hidden: a coin you can see you have, but cannot route to, is less
 // confusing than one that silently is not there.
+import { AuroraText } from "./aurora-text";
+
 export function MeshDefault({
   apps,
   mesh,
@@ -72,11 +74,14 @@ export function MeshDefault({
         }}
       />
       <span className="min-w-0 flex-1">
-        <span
-          className="font-display block truncate text-sm font-semibold tracking-wide"
-          style={{ color: position === 0 ? app.color : "var(--foreground)" }}
-        >
-          {app.ticker}
+        {/* The default shifts through its own colour; the fallbacks stay plain, so
+            the order is readable at a glance rather than from position alone. */}
+        <span className="font-display block truncate text-sm font-semibold tracking-wide">
+          {position === 0 ? (
+            <AuroraText colors={[app.color, "#7928CA", "#38bdf8", app.color]}>{app.ticker}</AuroraText>
+          ) : (
+            app.ticker
+          )}
         </span>
         <span className="block truncate text-[0.6rem] text-foreground/90">{app.chain}</span>
       </span>

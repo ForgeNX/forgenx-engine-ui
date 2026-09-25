@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Lock, LockOpen } from "lucide-react";
+import { AuroraText } from "./aurora-text";
 import {
   assignMeshWorker,
   formatAllocation,
@@ -186,7 +187,13 @@ export function MeshAllocator({
                 />
                 <span className="min-w-0 flex-1">
                   <span className="font-display block truncate text-sm font-semibold tracking-wide">
-                    {app?.ticker ?? sym}
+                    {app ? (
+                      <AuroraText colors={[app.color, "#7928CA", "#38bdf8", app.color]}>
+                        {app.ticker}
+                      </AuroraText>
+                    ) : (
+                      sym
+                    )}
                   </span>
                   <span className="block truncate text-[0.6rem] text-foreground/90">{app?.chain ?? ""}</span>
                 </span>

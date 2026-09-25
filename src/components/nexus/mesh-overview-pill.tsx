@@ -1,5 +1,6 @@
 import { Activity } from "lucide-react";
 import { ShineBorder } from "./shine-border";
+import { AuroraText } from "./aurora-text";
 import type { MeshOverview } from "@/lib/forge-api";
 import type { ForgeApp } from "./nexus-data";
 
@@ -86,28 +87,41 @@ export function MeshOverviewPill({ apps, overview }: { apps: ForgeApp[]; overvie
           {overview.nodes.map((n) => {
             const app = appFor(n.coin);
             return (
-              <div key={n.coin} className="flex flex-col gap-0.5">
-                <span className="flex items-center gap-2 whitespace-pre-wrap font-mono text-[0.7rem] text-foreground/90">
-                  <span className="size-1.5 shrink-0 rounded-full" style={{ background: app?.color ?? "var(--foreground)" }} />
-                  <span className="w-16 shrink-0 truncate font-semibold" style={{ color: app?.color ?? "var(--foreground)" }}>
-                    {app?.ticker ?? (n.coin || "none")}
+              // The title column runs down the left, the figures beside it, so the
+              // chain name shares a line with the shares rather than costing one.
+              <div key={n.coin} className="flex items-start gap-4 font-mono text-[0.7rem] text-foreground/90">
+                <span className="flex shrink-0 items-start gap-2">
+                  <span
+                    className="mt-1 size-1.5 shrink-0 rounded-full"
+                    style={{ background: app?.color ?? "var(--foreground)" }}
+                  />
+                  <span className="flex w-20 flex-col">
+                    <span className="truncate text-[0.8rem] font-semibold" style={{ color: app?.color ?? "var(--foreground)" }}>
+                      {app ? (
+                        <AuroraText colors={[app.color, "#7928CA", "#38bdf8", app.color]}>{app.ticker}</AuroraText>
+                      ) : (
+                        n.coin || "none"
+                      )}
+                    </span>
+                    <span className="truncate text-[0.55rem] leading-tight text-foreground/90">{app?.chain ?? ""}</span>
                   </span>
-                  <span>
+                </span>
+
+                <span className="flex min-w-0 flex-col gap-0.5">
+                  <span className="whitespace-pre-wrap">
                     {n.miners} miner{n.miners === 1 ? "" : "s"} ({n.fleet_miners} fleet / {n.assigned_miners} assigned)
                     {"  -  "}Hashrate: <span className="text-neon-cyan">{n.ths.toFixed(2)} TH/s</span>
                   </span>
-                </span>
-                <span className="ml-[5.375rem] whitespace-pre-wrap font-mono text-[0.7rem] text-foreground/90">
-                  Shares: <span style={{ color: "var(--neon-green)" }}>{n.accepted} accepted</span>
-                  {" / "}
-                  <span style={{ color: n.rejected > 0 ? "#ff0080" : "var(--foreground)" }}>{n.rejected} rejected</span>
-                  {" / "}
-                  <span style={{ color: n.stale > 0 ? "var(--neon-gold)" : "var(--foreground)" }}>{n.stale} stale</span>
-                  {"  -  "}Blocks Found:{" "}
-                  <span style={{ color: n.blocks > 0 ? "var(--neon-green)" : "var(--foreground)" }}>{n.blocks}</span>
-                </span>
-                <span className="ml-[5.375rem] whitespace-pre-wrap font-mono text-[0.7rem] text-foreground/90">
-                  Best share: {compact(n.best_share)}
+                  <span className="whitespace-pre-wrap">
+                    Shares: <span style={{ color: "var(--neon-green)" }}>{n.accepted} accepted</span>
+                    {" / "}
+                    <span style={{ color: n.rejected > 0 ? "#ff0080" : "var(--foreground)" }}>{n.rejected} rejected</span>
+                    {" / "}
+                    <span style={{ color: n.stale > 0 ? "var(--neon-gold)" : "var(--foreground)" }}>{n.stale} stale</span>
+                    {"  -  "}Blocks Found:{" "}
+                    <span style={{ color: n.blocks > 0 ? "var(--neon-green)" : "var(--foreground)" }}>{n.blocks}</span>
+                  </span>
+                  <span className="whitespace-pre-wrap">Best share: {compact(n.best_share)}</span>
                 </span>
               </div>
             );

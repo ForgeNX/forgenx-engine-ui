@@ -230,11 +230,14 @@ export function MinerPill({
                     animation: isActive ? "pulse-glow 2.4s ease-in-out infinite" : undefined,
                   }}
                 />
-                <span
-                  className="text-[0.75rem] font-semibold"
-                  style={{ color: isActive ? (app?.color ?? "var(--foreground)") : "var(--foreground)" }}
-                >
-                  {app?.ticker ?? sym}
+                <span className="flex flex-col">
+                  <span
+                    className="text-[0.75rem] font-semibold"
+                    style={{ color: isActive ? (app?.color ?? "var(--foreground)") : "var(--foreground)" }}
+                  >
+                    {app?.ticker ?? sym}
+                  </span>
+                  <span className="truncate text-[0.6rem] leading-tight text-foreground/90">{app?.chain ?? ""}</span>
                 </span>
                 {isPending ? (
                   <span className="font-mono text-[0.7rem] text-neon-gold">moving here</span>
