@@ -40,7 +40,10 @@ const SOURCE_LABEL: Record<string, { text: string; color: string }> = {
 // just dropped, days when it has been gone a while.
 function awayFor(iso: string): string {
   const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60_000);
-  if (!Number.isFinite(mins) || mins < 1) return "just now";
+  // Under a minute says nothing worth reading - a miner is briefly away during
+  // an engine restart, and "last seen just now" beside "offline" reads as a
+  // contradiction rather than a fact.
+  if (!Number.isFinite(mins) || mins < 1) return "";
   if (mins < 60) return `${mins}m`;
   const hours = Math.floor(mins / 60);
   if (hours < 48) return `${hours}h`;
@@ -168,7 +171,7 @@ export function MinerPill({
             <span className="mt-0.5 flex items-center gap-1.5 font-mono text-[0.7rem] font-semibold" style={{ color: "#e0115f" }}>
                 <Unplug className="size-3.5" />
                 Device offline
-                {miner.last_seen && (
+                {miner.last_seen && awayFor(miner.last_seen) && (
                   <span className="font-normal text-muted-foreground">
                     {" "}
                     - last seen {awayFor(miner.last_seen)} ago
