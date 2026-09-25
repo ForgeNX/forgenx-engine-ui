@@ -27,10 +27,13 @@ function compactDiff(n: number): string {
 // first second; the relay's is inferred from the shares it has submitted; a
 // coin's average is a last resort while the others are unavailable. Saying so
 // explains why a number here can differ from the one on a coin's own screen.
-const SOURCE_LABEL: Record<string, string> = {
-  miner: "from miner",
-  mesh: "at relay",
-  coin: "coin avg",
+// The colour says how much the figure can be trusted: the miner's own reading is
+// exact, the relay's is inferred from the shares it has seen, and a coin's
+// average is the least precise - the one worth noticing.
+const SOURCE_LABEL: Record<string, { text: string; color: string }> = {
+  miner: { text: "from miner", color: "var(--neon-green)" },
+  mesh: { text: "at relay", color: "var(--neon-cyan)" },
+  coin: { text: "coin avg", color: "var(--neon-gold)" },
 };
 
 export function MinerPill({
@@ -136,9 +139,9 @@ export function MinerPill({
                   <>
                     <span className="text-[0.72rem] text-neon-cyan">{hashrate(miner.hashrate_15m)}</span>
                     {SOURCE_LABEL[miner.hashrate_source ?? ""] && (
-                      <span className="text-muted-foreground">
+                      <span style={{ color: SOURCE_LABEL[miner.hashrate_source ?? ""].color }}>
                         {" "}
-                        ({SOURCE_LABEL[miner.hashrate_source ?? ""]})
+                        ({SOURCE_LABEL[miner.hashrate_source ?? ""].text})
                       </span>
                     )}
                   </>

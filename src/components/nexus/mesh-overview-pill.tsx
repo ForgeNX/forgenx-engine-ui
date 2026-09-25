@@ -47,7 +47,7 @@ export function MeshOverviewPill({ apps, overview }: { apps: ForgeApp[]; overvie
       <ShineBorder
         borderWidth={1.5}
         duration={14}
-        shineColor={["var(--neon-cyan)", "var(--neon-green)", "var(--neon-cyan)"]}
+        shineColor={["var(--neon-cyan)", "var(--neon-pink)", "var(--neon-gold)"]}
       />
       <div className="flex items-center justify-between gap-2">
         <span className="flex items-center gap-2">
@@ -82,19 +82,34 @@ export function MeshOverviewPill({ apps, overview }: { apps: ForgeApp[]; overvie
 </div>
 
       {overview.nodes.length > 0 && (
-        <div className="mt-3 flex flex-col gap-1 border-t border-border/60 pt-3">
+        <div className="mt-3 flex flex-col gap-2 border-t border-border/60 pt-3">
           {overview.nodes.map((n) => {
             const app = appFor(n.coin);
             return (
-              <span key={n.coin} className="flex items-center gap-2 font-mono text-[0.72rem]">
-                <span className="size-1.5 rounded-full" style={{ background: app?.color ?? "var(--foreground)" }} />
-                <span className="w-20 font-semibold" style={{ color: app?.color ?? "var(--foreground)" }}>
-                  {app?.ticker ?? (n.coin || "none")}
+              <div key={n.coin} className="flex flex-col gap-0.5">
+                <span className="flex items-center gap-2 whitespace-pre-wrap font-mono text-[0.7rem] text-foreground/90">
+                  <span className="size-1.5 shrink-0 rounded-full" style={{ background: app?.color ?? "var(--foreground)" }} />
+                  <span className="w-16 shrink-0 truncate font-semibold" style={{ color: app?.color ?? "var(--foreground)" }}>
+                    {app?.ticker ?? (n.coin || "none")}
+                  </span>
+                  <span>
+                    {n.miners} miner{n.miners === 1 ? "" : "s"} ({n.fleet_miners} fleet / {n.assigned_miners} assigned)
+                    {"  -  "}Hashrate: <span className="text-neon-cyan">{n.ths.toFixed(2)} TH/s</span>
+                  </span>
                 </span>
-                <span className="text-foreground/90">
-                  {n.miners} miner{n.miners === 1 ? "" : "s"} · {n.ths.toFixed(2)} TH/s
+                <span className="ml-[5.375rem] whitespace-pre-wrap font-mono text-[0.7rem] text-foreground/90">
+                  Shares: <span style={{ color: "var(--neon-green)" }}>{n.accepted} accepted</span>
+                  {" / "}
+                  <span style={{ color: n.rejected > 0 ? "#ff0080" : "var(--foreground)" }}>{n.rejected} rejected</span>
+                  {" / "}
+                  <span style={{ color: n.stale > 0 ? "var(--neon-gold)" : "var(--foreground)" }}>{n.stale} stale</span>
+                  {"  -  "}Blocks Found:{" "}
+                  <span style={{ color: n.blocks > 0 ? "var(--neon-green)" : "var(--foreground)" }}>{n.blocks}</span>
                 </span>
-              </span>
+                <span className="ml-[5.375rem] whitespace-pre-wrap font-mono text-[0.7rem] text-foreground/90">
+                  Best share: {compact(n.best_share)}
+                </span>
+              </div>
             );
           })}
         </div>

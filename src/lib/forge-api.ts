@@ -821,7 +821,18 @@ export type MeshOverview = {
   stale: number;
   switches: number;
   lost?: number;
-  nodes: { coin: string; miners: number; ths: number }[];
+  nodes: {
+    coin: string;
+    miners: number;
+    ths: number;
+    fleet_miners: number;
+    assigned_miners: number;
+    accepted: number;
+    rejected: number;
+    stale: number;
+    blocks: number;
+    best_share: number;
+  }[];
 };
 
 // A share the pool refused, and why. Kept by the engine for the last few per
