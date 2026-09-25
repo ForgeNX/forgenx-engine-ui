@@ -33,8 +33,19 @@ function compactDiff(n: number): string {
 const SOURCE_LABEL: Record<string, { text: string; color: string }> = {
   miner: { text: "from miner", color: "var(--neon-green)" },
   mesh: { text: "at relay", color: "var(--neon-cyan)" },
-  coin: { text: "coin avg", color: "var(--neon-gold)" },
+  coin: { text: "node avg", color: "var(--neon-gold)" },
 };
+
+// How long a miner has been away, in the units that matter: minutes when it has
+// just dropped, days when it has been gone a while.
+function awayFor(iso: string): string {
+  const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60_000);
+  if (!Number.isFinite(mins) || mins < 1) return "just now";
+  if (mins < 60) return `${mins}m`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 48) return `${hours}h`;
+  return `${Math.floor(hours / 24)}d`;
+}
 
 export function MinerPill({
   apps,
@@ -157,6 +168,12 @@ export function MinerPill({
             <span className="mt-0.5 flex items-center gap-1.5 font-mono text-[0.7rem] font-semibold" style={{ color: "#e0115f" }}>
                 <Unplug className="size-3.5" />
                 Device offline
+                {miner.last_seen && (
+                  <span className="font-normal text-muted-foreground">
+                    {" "}
+                    - last seen {awayFor(miner.last_seen)} ago
+                  </span>
+                )}
               </span>
           )}
           {(miner.difficulty ?? 0) > 0 && (
