@@ -133,16 +133,21 @@ export function MeshSettings() {
         miner: f,
         name: settings?.auto_name ? "" : nameFor(f).trim(),
         state: "waiting" as const,
+        include: true,
       })),
       running: false,
       finished: false,
     });
+  const toggleBulkRow = (host: string) =>
+    setBulk((b) => b && { ...b, rows: b.rows.map((r) => (r.miner.host === host ? { ...r, include: !r.include } : r)) });
   const setRow = (host: string, patch: Partial<BulkRow>) =>
     setBulk((b) => b && { ...b, rows: b.rows.map((r) => (r.miner.host === host ? { ...r, ...patch } : r)) });
 
   const runBulk = async () => {
     if (!bulk) return;
-    const rows = bulk.rows;
+    // Only the ticked miners are moved; the rest are left as they are.
+    const rows = bulk.rows.filter((r) => r.include);
+    if (rows.length === 0) return;
     setBulk((b) => b && { ...b, running: true });
     // With automatic names, each name comes from the engine after the previous
     // move reserved one. If that cannot be confirmed the run stops rather than
@@ -721,6 +726,7 @@ export function MeshSettings() {
           includeNew={Boolean(settings?.include_new)}
           running={bulk.running}
           finished={bulk.finished}
+          onToggle={toggleBulkRow}
           onConfirm={runBulk}
           onClose={() => setBulk(null)}
         />
