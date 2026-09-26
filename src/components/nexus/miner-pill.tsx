@@ -59,6 +59,16 @@ function settledFor(iso: string): string {
   return `${mins}m`;
 }
 
+// How long until a miner split across nodes moves to the next one. It is
+// scheduled by the relay, so it can be stated rather than waited for.
+function untilRotation(iso: string): string {
+  const mins = Math.ceil((new Date(iso).getTime() - Date.now()) / 60_000);
+  if (!Number.isFinite(mins) || mins < 1) return "";
+  if (mins < 60) return `${mins}m`;
+  const hours = Math.floor(mins / 60);
+  return `${hours}h ${mins % 60}m`;
+}
+
 export function MinerPill({
   apps,
   coins,
@@ -194,6 +204,12 @@ export function MinerPill({
             {(miner.best_share ?? 0) > 0 && (
               <>
                 {"  -  "}Best share: {compactDiff(miner.best_share ?? 0)}
+              </>
+            )}
+            {miner.next_rotation && untilRotation(miner.next_rotation) && (
+              <>
+                {"  -  "}Next switch:{" "}
+                <span className="text-neon-gold">{untilRotation(miner.next_rotation)}</span>
               </>
             )}
               {(miner.next_difficulty ?? 0) > 0 && (

@@ -575,6 +575,7 @@ export type MeshMiner = {
   last_seen?: string | null; // when it last submitted a share, across restarts
   settled_until?: string | null; // a Fleet Balance miner stays put until this time
   best_share?: number; // the best share it has found this session
+  next_rotation?: string | null; // when a split miner next moves node
   difficulty?: number; // current, on the coin it is mining
   next_difficulty?: number; // a change waiting for the next block; 0 when none
 };
