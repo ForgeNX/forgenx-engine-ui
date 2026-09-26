@@ -206,12 +206,6 @@ export function MinerPill({
                 {"  -  "}Best share: {compactDiff(miner.best_share ?? 0)}
               </>
             )}
-            {miner.next_rotation && untilRotation(miner.next_rotation) && (
-              <>
-                {"  -  "}Next switch:{" "}
-                <span className="text-neon-gold">{untilRotation(miner.next_rotation)}</span>
-              </>
-            )}
               {(miner.next_difficulty ?? 0) > 0 && (
                 <>
                   {"  -  "}Next: <span className="text-neon-gold">{compactDiff(miner.next_difficulty ?? 0)}</span>
@@ -368,6 +362,11 @@ export function MinerPill({
             />
           </button>
           <span className="text-[0.75rem] text-foreground/90">Include in Fleet Balance</span>
+        {miner.next_rotation && untilRotation(miner.next_rotation) && (
+          <span className="ml-auto font-mono text-[0.72rem] text-foreground/90">
+            Next switch: <span className="text-neon-gold">{untilRotation(miner.next_rotation)}</span>
+          </span>
+        )}
         {isAuto && miner.settled_until && settledFor(miner.settled_until) && (
           <span className="font-mono text-[0.68rem] text-muted-foreground">
             (settled here for another {settledFor(miner.settled_until)})

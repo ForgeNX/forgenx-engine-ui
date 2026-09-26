@@ -45,7 +45,7 @@ function Row({ e, apps }: { e: MeshActivity; apps: ForgeApp[] }) {
           node(e.to ?? e.from)
         )}
       </span>
-      <span className="shrink-0 font-mono text-[0.62rem] text-muted-foreground">{ago(e.at)}</span>
+      <span className="shrink-0 font-mono text-[0.65rem] text-foreground/90">{ago(e.at)}</span>
     </div>
   );
 }
