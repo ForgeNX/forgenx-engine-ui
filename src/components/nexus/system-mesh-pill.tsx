@@ -53,6 +53,18 @@ export function SystemMeshPill({
     minersOn[c] = (minersOn[c] ?? 0) + 1;
   }
   const appFor = (sym: string) => apps.find((a) => a.id.toUpperCase() === sym);
+
+  // How far the fleet sits from its target, in points. The balancer tolerates
+  // five, so a wider gap is worth explaining: it is usually not a fault but the
+  // arithmetic of whole miners.
+  const offBy = Math.max(
+    0,
+    ...Object.keys(target).map((sym) => {
+      const t = target[sym] ?? 0;
+      const a = total > 0 ? ((actual[sym] ?? 0) / total) * 100 : 0;
+      return Math.abs(t - a);
+    }),
+  );
   const coins = mesh.coins.map((c) => c.toUpperCase()).slice(0, nodeRefs.length);
 
   return (
@@ -169,6 +181,14 @@ export function SystemMeshPill({
 
       {!mesh.system_target && (
         <p className="mt-3 text-[0.7rem] text-foreground/90">No target set - select to choose a split.</p>
+      )}
+
+      {mesh.system_target && included.length > 0 && offBy > 5 && (
+        <p className="mt-3 text-[0.7rem] leading-relaxed text-foreground">
+          <span className="text-neon-cyan">ⓘ Note:</span> Each miner is placed on one node, so the split
+          moves in whole miners. With miners of very different sizes the target may not be reachable
+          exactly - this is the closest arrangement available.
+        </p>
       )}
     </div>
   );

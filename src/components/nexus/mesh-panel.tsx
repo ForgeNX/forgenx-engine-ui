@@ -127,6 +127,16 @@ export function MeshPanel({
       </p>
 
       <div className="mt-4 flex flex-col gap-3">
+        {mesh.coins.length < 2 && (
+          <div className="rounded-xl border p-3" style={{ borderColor: "var(--neon-gold)", background: "color-mix(in oklab, var(--neon-gold) 6%, transparent)" }}>
+            <p className="text-[0.75rem] leading-relaxed text-foreground">
+              <span className="text-neon-gold">ⓘ Note:</span> The mesh is carrying one node, so there is
+              nothing for it to do yet - no second node to fail over to, and nothing to allocate between.
+              Install another node and miners on the mesh will be bonded to both.
+            </p>
+          </div>
+        )}
+
         <MeshOverviewPill apps={apps} overview={mesh.overview} />
         <SystemMeshPill
           apps={apps}

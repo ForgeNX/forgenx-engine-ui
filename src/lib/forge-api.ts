@@ -573,6 +573,8 @@ export type MeshMiner = {
   shares_lost?: number; // leftover work from before a reconnect, answered by the relay
   pending_coin?: string; // a switch waiting for this coin's next job
   last_seen?: string | null; // when it last submitted a share, across restarts
+  settled_until?: string | null; // a Fleet Balance miner stays put until this time
+  best_share?: number; // the best share it has found this session
   difficulty?: number; // current, on the coin it is mining
   next_difficulty?: number; // a change waiting for the next block; 0 when none
 };
@@ -833,6 +835,7 @@ export type MeshOverview = {
     stale: number;
     blocks: number;
     best_share: number;
+    best_share_worker: string;
   }[];
 };
 

@@ -50,6 +50,15 @@ function awayFor(iso: string): string {
   return `${Math.floor(hours / 24)}d`;
 }
 
+// How long until the balancer will consider moving this miner again. It leaves a
+// miner alone for a while after a move, so one sitting on an apparently odd node
+// is settled rather than stuck.
+function settledFor(iso: string): string {
+  const mins = Math.ceil((new Date(iso).getTime() - Date.now()) / 60_000);
+  if (!Number.isFinite(mins) || mins < 1) return "";
+  return `${mins}m`;
+}
+
 export function MinerPill({
   apps,
   coins,
@@ -182,6 +191,11 @@ export function MinerPill({
           {(miner.difficulty ?? 0) > 0 && (
             <span className="mt-0.5 block whitespace-pre-wrap font-mono text-[0.7rem] text-foreground/90">
               Difficulty (current): {compactDiff(miner.difficulty ?? 0)}
+            {(miner.best_share ?? 0) > 0 && (
+              <>
+                {"  -  "}Best share: {compactDiff(miner.best_share ?? 0)}
+              </>
+            )}
               {(miner.next_difficulty ?? 0) > 0 && (
                 <>
                   {"  -  "}Next: <span className="text-neon-gold">{compactDiff(miner.next_difficulty ?? 0)}</span>
@@ -338,6 +352,11 @@ export function MinerPill({
             />
           </button>
           <span className="text-[0.75rem] text-foreground/90">Include in Fleet Balance</span>
+        {isAuto && miner.settled_until && settledFor(miner.settled_until) && (
+          <span className="font-mono text-[0.68rem] text-muted-foreground">
+            settled here for another {settledFor(miner.settled_until)}
+          </span>
+        )}
         </span>
       )}
       {showRejections && <RejectionList worker={miner.worker} />}

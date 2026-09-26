@@ -121,7 +121,10 @@ export function MeshOverviewPill({ apps, overview }: { apps: ForgeApp[]; overvie
                     {"  -  "}Blocks Found:{" "}
                     <span style={{ color: n.blocks > 0 ? "var(--neon-green)" : "var(--foreground)" }}>{n.blocks}</span>
                   </span>
-                  <span className="whitespace-pre-wrap">Best share: {compact(n.best_share)}</span>
+                  <span className="whitespace-pre-wrap">
+          Best share: {compact(n.best_share)}
+          {n.best_share_worker && <span className="text-muted-foreground">  ({n.best_share_worker})</span>}
+        </span>
                 </span>
               </div>
             );
