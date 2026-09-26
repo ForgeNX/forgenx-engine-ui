@@ -188,26 +188,34 @@ export function NexusShell() {
         ) : tab === "Information" ? (
           <InformationPanel coinCount={apps.length} info={engineInfo} uptime={engineUptime} />
         ) : tab === "Nexus" ? (
-          <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1fr)]">
-            <div className="flex flex-col gap-4">
+          // Three columns at 2xl: settings, miners, then activity and the allocator.
+          // Narrower, the miners lead: at xl they take the wide left column with
+          // the rest beside them, and in one column they come first, with the
+          // allocator straight after so a selected miner's sliders are in view.
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] 2xl:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1fr)]">
+            <div className="order-3 flex flex-col gap-4 xl:col-start-2 xl:row-start-2 xl:self-start 2xl:order-none 2xl:col-start-1 2xl:row-start-1 2xl:self-auto">
               <MeshDefault apps={apps} mesh={mesh} refresh={refreshMesh} />
               <MeshRotation apps={apps} mesh={mesh} refresh={refreshMesh} />
               <MeshSettings />
             </div>
-            <MeshPanel
-              apps={apps}
-              refresh={refreshMesh}
-              mesh={mesh}
-              loading={meshLoading}
-              stale={meshError !== null && mesh !== null}
-              updatedAt={meshUpdatedAt}
-              selected={selectedMiner}
-              onSelect={setSelectedMiner}
-            />
-            <div className="flex flex-col gap-4">
+            <div className="order-1 flex flex-col *:flex-1 xl:col-start-1 xl:row-span-2 xl:row-start-1 2xl:order-none 2xl:col-start-2 2xl:row-span-1">
+              <MeshPanel
+                apps={apps}
+                refresh={refreshMesh}
+                mesh={mesh}
+                loading={meshLoading}
+                stale={meshError !== null && mesh !== null}
+                updatedAt={meshUpdatedAt}
+                selected={selectedMiner}
+                onSelect={setSelectedMiner}
+              />
+            </div>
+            <div className="order-2 flex flex-col gap-4 xl:col-start-2 xl:row-start-1 xl:self-start 2xl:order-none 2xl:col-start-3 2xl:row-start-1 2xl:self-auto">
               <MeshActivityPanel apps={apps} activity={activity} worker={historyFor} />
               <MeshActivityPanel apps={apps} activity={activity} worker={historyFor} fleetOnly />
-              <MeshAllocator apps={apps} mesh={mesh} miner={activeMiner} system={selectedMiner === FLEET_WORKER} refresh={refreshMesh} />
+              <div className="order-first 2xl:order-none">
+                <MeshAllocator apps={apps} mesh={mesh} miner={activeMiner} system={selectedMiner === FLEET_WORKER} refresh={refreshMesh} />
+              </div>
             </div>
           </div>
         ) : tab === "Settings" ? (

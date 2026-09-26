@@ -139,7 +139,7 @@ export function MinerPill({
         }
       }}
       aria-pressed={selected}
-      className="cursor-pointer rounded-xl border p-4 text-left transition hover:-translate-y-0.5"
+      className="@container cursor-pointer rounded-xl border p-4 text-left transition hover:-translate-y-0.5"
       style={{
         borderColor: selected ? "var(--neon-cyan)" : "var(--border)",
         background: selected
@@ -147,7 +147,10 @@ export function MinerPill({
           : "color-mix(in oklab, var(--secondary) 25%, transparent)",
       }}
     >
-      <div ref={containerRef} className="relative flex items-start gap-4">
+      {/* Side by side with beams when the card has room; on a narrow card the
+          nodes drop below the details and the beams are left out, since they
+          would only cross the text. */}
+      <div ref={containerRef} className="relative flex flex-col gap-3 @md:flex-row @md:items-start @md:gap-4">
         {/* Left: who the miner is. The beam starts here, so it has to sit inside
             the same container the beams measure against. */}
         <div className="z-10 min-w-0 flex-1">
@@ -245,7 +248,7 @@ export function MinerPill({
         {/* Top-aligned, and nudged to sit level with the worker name: centring
             would move a node up or down depending on how many there are, so the
             beam's endpoint would shift as the allocation changed. */}
-        <div className="mt-0.5 flex shrink-0 flex-col items-start gap-2.5">
+        <div className="flex shrink-0 flex-col items-start gap-2.5 border-t border-border/40 pt-3 @md:mt-0.5 @md:border-0 @md:pt-0">
           {beams.map((sym, i) => {
             const app = appFor(sym);
             const isActive = active === sym;
@@ -294,6 +297,7 @@ export function MinerPill({
           const isPending = pending === sym && !isActive;
           return (
             <AnimatedBeam
+              className="hidden @md:block"
               key={`beam-${miner.worker}-${sym}`}
               containerRef={containerRef}
               fromRef={fromRef}

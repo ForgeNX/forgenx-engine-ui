@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, RefreshCw, ScanLine } from "lucide-react";
 import { MoveToMeshModal } from "./move-to-mesh-modal";
+import { BulkMoveModal, type BulkRow } from "./bulk-move-modal";
 import { formatHashrate } from "./format";
 import {
   fetchFoundMiners,
@@ -118,6 +119,70 @@ export function MeshSettings() {
         if (s2) setSettings(s2);
       }, 75_000);
     }
+  };
+
+  // Moving every eligible miner at once: those the engine can repoint (AxeOS)
+  // that mine directly today. "Mesh · idle" ones already point at the mesh.
+  const eligible = found.filter(
+    (f) => f.driver === "axeos" && !f.on_mesh && !f.points_at_mesh && (settings?.auto_name || nameFor(f).trim()),
+  );
+  const [bulk, setBulk] = useState<{ rows: BulkRow[]; running: boolean; finished: boolean } | null>(null);
+  const openBulk = () =>
+    setBulk({
+      rows: eligible.map((f) => ({
+        miner: f,
+        name: settings?.auto_name ? "" : nameFor(f).trim(),
+        state: "waiting" as const,
+      })),
+      running: false,
+      finished: false,
+    });
+  const setRow = (host: string, patch: Partial<BulkRow>) =>
+    setBulk((b) => b && { ...b, rows: b.rows.map((r) => (r.miner.host === host ? { ...r, ...patch } : r)) });
+
+  const runBulk = async () => {
+    if (!bulk) return;
+    const rows = bulk.rows;
+    setBulk((b) => b && { ...b, running: true });
+    // With automatic names, each name comes from the engine after the previous
+    // move reserved one. If that cannot be confirmed the run stops rather than
+    // risk giving two miners the same name.
+    let next = settings?.next_name ?? "";
+    let stopped = false;
+    for (const r of rows) {
+      if (stopped) {
+        setRow(r.miner.host, { state: "failed", note: "not moved - the next worker name could not be confirmed" });
+        continue;
+      }
+      const name = settings?.auto_name ? next : r.name;
+      if (!name) {
+        setRow(r.miner.host, { state: "failed", note: "no worker name" });
+        continue;
+      }
+      setMoving(r.miner.host);
+      setRow(r.miner.host, { state: "moving", name });
+      const res = await moveMinerToMesh(r.miner.host, name);
+      setRow(r.miner.host, res.ok ? { state: "done", note: res.note } : { state: "failed", note: res.error ?? "failed" });
+      setMoveNote((n) => ({ ...n, [r.miner.host]: res.ok ? (res.note ?? "moved") : (res.error ?? "failed") }));
+      if (res.ok) {
+        const now = await fetchMeshSettings();
+        if (now) {
+          setSettings(now);
+          next = now.next_name;
+        } else if (settings?.auto_name) {
+          stopped = true;
+        }
+      }
+    }
+    setMoving(null);
+    setBulk((b) => b && { ...b, running: false, finished: true });
+    // The miners restart and reconnect; the list catches up on its own.
+    setTimeout(async () => {
+      const list = await fetchFoundMiners();
+      if (list) setFound(list);
+      const s2 = await fetchMeshSettings();
+      if (s2) setSettings(s2);
+    }, 75_000);
   };
   const [prefix, setPrefix] = useState("");
   const [address, setAddress] = useState("");
@@ -485,6 +550,18 @@ export function MeshSettings() {
                     </button>
                   );
                 })}
+                {eligible.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={openBulk}
+                    disabled={moving !== null || !settings?.mesh_address}
+                    title={settings?.mesh_address ? undefined : "Set the mesh address for miners first"}
+                    className="ml-auto rounded-md border px-2 py-0.5 text-[0.65rem] font-semibold transition disabled:opacity-40"
+                    style={{ borderColor: "var(--neon-cyan)", color: "var(--neon-cyan)" }}
+                  >
+                    Move all to mesh ({eligible.length})
+                  </button>
+                )}
               </div>
               {found.length === 0 && (
                 <p className="text-[0.7rem] text-foreground/90">
@@ -635,6 +712,19 @@ export function MeshSettings() {
             />
           );
         })()}
+      {bulk && (
+        <BulkMoveModal
+          rows={bulk.rows}
+          address={settings?.mesh_address ?? ""}
+          port={settings?.mesh_port ?? 0}
+          autoName={Boolean(settings?.auto_name)}
+          includeNew={Boolean(settings?.include_new)}
+          running={bulk.running}
+          finished={bulk.finished}
+          onConfirm={runBulk}
+          onClose={() => setBulk(null)}
+        />
+      )}
     </section>
   );
 }

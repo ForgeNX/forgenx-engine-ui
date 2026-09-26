@@ -81,7 +81,7 @@ export function SystemMeshPill({
         }
       }}
       aria-pressed={selected}
-      className="cursor-pointer rounded-xl border p-4 text-left transition hover:-translate-y-0.5"
+      className="@container cursor-pointer rounded-xl border p-4 text-left transition hover:-translate-y-0.5"
       style={{
         borderColor: selected ? "var(--neon-cyan)" : "color-mix(in oklab, var(--neon-cyan) 40%, var(--border))",
         background: selected
@@ -89,7 +89,10 @@ export function SystemMeshPill({
           : "color-mix(in oklab, var(--neon-cyan) 4%, transparent)",
       }}
     >
-      <div ref={containerRef} className="relative flex items-start gap-4">
+      {/* Side by side with beams when the card has room; on a narrow card the
+          nodes drop below the details and the beams are left out, since they
+          would only cross the text. */}
+      <div ref={containerRef} className="relative flex flex-col gap-3 @md:flex-row @md:items-start @md:gap-4">
         <div className="z-10 min-w-0 flex-1">
           <span ref={fromRef} className="font-display block w-fit text-sm font-bold text-neon-cyan">
             Fleet Balance
@@ -116,7 +119,7 @@ export function SystemMeshPill({
           </span>
         </div>
 
-        <div className="mt-0.5 flex shrink-0 flex-col items-start gap-2.5">
+        <div className="flex shrink-0 flex-col items-start gap-2.5 border-t border-border/40 pt-3 @md:mt-0.5 @md:border-0 @md:pt-0">
           {/* Headings sit above fixed-width columns, so the figures stay under
               them as they change. */}
           <span className="flex items-center gap-2 text-[0.62rem] tracking-[0.14em] text-foreground uppercase">
@@ -164,6 +167,7 @@ export function SystemMeshPill({
           const colour = app?.color ?? "var(--neon-cyan)";
           return (
             <AnimatedBeam
+              className="hidden @md:block"
               key={`fleet-beam-${sym}`}
               containerRef={containerRef}
               fromRef={fromRef}
