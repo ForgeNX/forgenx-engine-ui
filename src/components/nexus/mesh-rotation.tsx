@@ -82,10 +82,10 @@ export function MeshRotation({
       </div>
 
       <p className="mt-4 text-[0.7rem] leading-relaxed text-foreground">
-          <span className="text-neon-cyan">ⓘ Note:</span> Splitting a miner divides the blocks it can
-          expect between those nodes rather than adding to them. It is a way to be paid in more than one
-          coin, not a way to find more.
-        </p>
+        <span className="text-neon-cyan">ⓘ Note:</span> Splitting a miner divides the blocks it can
+        expect between those nodes rather than adding to them. It is a way to be paid in more than one
+        coin, not a way to find more.
+      </p>
 
       {rotating.length > 0 && (
         <div className="mt-4 border-t border-border/60 pt-3">

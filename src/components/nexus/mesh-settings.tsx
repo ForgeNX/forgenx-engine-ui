@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, RefreshCw, ScanLine } from "lucide-react";
 import { MoveToMeshModal } from "./move-to-mesh-modal";
+import { formatHashrate } from "./format";
 import {
   fetchFoundMiners,
   fetchMeshSettings,
@@ -249,7 +250,7 @@ export function MeshSettings() {
     "w-full rounded-lg border border-border/70 bg-secondary/25 px-3 py-1.5 font-mono text-[0.8rem] text-foreground placeholder:text-muted-foreground/60 focus:border-neon-cyan focus:outline-none";
 
   return (
-    <section className="panel-neon animate-rise flex flex-col p-5">
+    <section className="panel-neon animate-rise @container flex flex-col p-5">
       <header className="flex items-center gap-3">
         <span
           className="h-4 w-1 animate-pulse-glow rounded-full"
@@ -282,19 +283,18 @@ export function MeshSettings() {
             aria-label="End address (optional)"
           />
           <button
-          type="button"
-          disabled={busy || !dirty}
-          onClick={saveNetwork}
-          className="rounded-lg border px-3 py-1 text-[0.7rem] font-semibold transition disabled:opacity-40"
-          style={{
-          borderColor: dirty ? "var(--neon-cyan)" : "var(--border)",
-          color: dirty ? "var(--neon-cyan)" : "var(--foreground)",
-          }}
+            type="button"
+            disabled={busy || !dirty}
+            onClick={saveNetwork}
+            className="rounded-lg border px-3 py-1 text-[0.7rem] font-semibold transition disabled:opacity-40"
+            style={{
+              borderColor: dirty ? "var(--neon-cyan)" : "var(--border)",
+              color: dirty ? "var(--neon-cyan)" : "var(--foreground)",
+            }}
           >
-          {saved ? "Saved" : busy ? "Saving…" : "Save"}
+            {saved ? "Saved" : busy ? "Saving…" : "Save"}
           </button>
         </div>
-      {/* Two mesh-wide settings, side by side so their headings and toggles line up. */}
       <div className="mt-5 border-t border-border/60 pt-4">
         <p className="text-[0.7rem] font-semibold tracking-[0.18em] text-foreground uppercase">
           Mesh address for miners
@@ -319,7 +319,9 @@ export function MeshSettings() {
           {addressSaved && <span className="text-[0.65rem] text-muted-foreground">saved</span>}
         </div>
       </div>
-      <div className="mt-5 grid grid-cols-2 gap-5 border-t border-border/60 pt-4">
+      {/* Two mesh-wide settings, side by side when the panel is wide enough for
+          their headings and toggles to line up, stacked when it is not. */}
+      <div className="mt-5 grid grid-cols-1 gap-5 border-t border-border/60 pt-4 @md:grid-cols-2">
         <div>
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
@@ -411,9 +413,9 @@ export function MeshSettings() {
                 )}
               </div>
               <p className="mt-2 text-[0.68rem] leading-relaxed text-foreground">
-                  <span style={{ color: "#e0115f" }}>⚠ Warning:</span> A miner added to the mesh will be
-                  renamed to the next available name in the sequence, replacing the name it currently uses.
-                </p>
+                <span style={{ color: "#e0115f" }}>⚠ Warning:</span> A miner added to the mesh will be
+                renamed to the next available name in the sequence, replacing the name it currently uses.
+              </p>
             </>
           )}
         </div>
@@ -513,7 +515,7 @@ export function MeshSettings() {
                       Device: {f.model || "unknown"}  -  IP: {f.host}
                     </p>
                     <p className="mt-0.5 font-mono text-[0.65rem] text-foreground/90 whitespace-pre-wrap">
-                      Hashrate: <span className="text-neon-cyan">{f.hashrate_ths.toFixed(2)} TH/s</span>
+                      Hashrate: <span className="text-neon-cyan">{formatHashrate(f.hashrate_ths)}</span>
                       {"  -  "}Asic: {temp(f.asic_temp)}
                       {f.asic_temp_max > 0 && ` / ${temp(f.asic_temp_max)} max`}
                       {"  -  "}VR: {temp(f.vr_temp)}
@@ -616,37 +618,23 @@ export function MeshSettings() {
       </div>
 
 
-    {confirming && (() => {
-
-      const f = found.find((x) => x.host === confirming);
-
-      if (!f) return null;
-
-      return (
-
-        <MoveToMeshModal
-
-          miner={f}
-
-          worker={nameFor(f).trim()}
-
-          address={settings?.mesh_address ?? ""}
-
-          port={settings?.mesh_port ?? 0}
-      includeNew={Boolean(settings?.include_new)}
-
-          busy={moving === f.host}
-
-          onConfirm={() => doMove(f)}
-
-          onCancel={() => setConfirming(null)}
-
-        />
-
-      );
-
-    })()}
-
+      {confirming &&
+        (() => {
+          const f = found.find((x) => x.host === confirming);
+          if (!f) return null;
+          return (
+            <MoveToMeshModal
+              miner={f}
+              worker={nameFor(f).trim()}
+              address={settings?.mesh_address ?? ""}
+              port={settings?.mesh_port ?? 0}
+              includeNew={Boolean(settings?.include_new)}
+              busy={moving === f.host}
+              onConfirm={() => doMove(f)}
+              onCancel={() => setConfirming(null)}
+            />
+          );
+        })()}
     </section>
   );
 }

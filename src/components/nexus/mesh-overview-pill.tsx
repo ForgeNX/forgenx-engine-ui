@@ -1,22 +1,12 @@
 import { Activity } from "lucide-react";
 import { ShineBorder } from "./shine-border";
 import { AuroraText } from "./aurora-text";
+import { compactNumber, formatHashrate } from "./format";
 import type { MeshOverview } from "@/lib/forge-api";
 import type { ForgeApp } from "./nexus-data";
 
 // A summary of the whole mesh since the engine last started: what is connected,
 // what it is producing, and how its shares and switches have gone.
-
-// 1207411 -> "1.21M": share difficulties run from thousands to trillions.
-function compact(n: number): string {
-  const units = ["", "K", "M", "G", "T", "P"];
-  let i = 0;
-  while (Math.abs(n) >= 1000 && i < units.length - 1) {
-    n /= 1000;
-    i++;
-  }
-  return `${n.toFixed(i === 0 ? 0 : 2)}${units[i]}`;
-}
 
 function uptime(since: string): string {
   const ms = Date.now() - new Date(since).getTime();
@@ -44,7 +34,10 @@ export function MeshOverviewPill({ apps, overview }: { apps: ForgeApp[]; overvie
   const up = uptime(overview.since);
 
   return (
-    <div className="relative overflow-hidden rounded-xl border border-border/70 p-4" style={{ background: "color-mix(in oklab, var(--secondary) 25%, transparent)" }}>
+    <div
+      className="relative overflow-hidden rounded-xl border border-border/70 p-4"
+      style={{ background: "color-mix(in oklab, var(--secondary) 25%, transparent)" }}
+    >
       <ShineBorder
         borderWidth={1.5}
         duration={14}
@@ -60,10 +53,14 @@ export function MeshOverviewPill({ apps, overview }: { apps: ForgeApp[]; overvie
 
       <div className="mt-3 grid grid-cols-3 gap-x-4 gap-y-3">
         <Stat label="Miners" value={String(overview.connected)} />
-        <Stat label="Hashrate" value={`${overview.total_ths.toFixed(2)} TH/s`} color="var(--neon-cyan)" />
-        <Stat label="Peak Hashrate" value={`${overview.peak_ths.toFixed(2)} TH/s`} />
-        <Stat label="Best share" value={compact(overview.best_share)} />
-        <Stat label="Blocks Found" value={String(overview.blocks)} color={overview.blocks > 0 ? "var(--neon-green)" : undefined} />
+        <Stat label="Hashrate" value={formatHashrate(overview.total_ths)} color="var(--neon-cyan)" />
+        <Stat label="Peak Hashrate" value={formatHashrate(overview.peak_ths)} />
+        <Stat label="Best share" value={compactNumber(overview.best_share)} />
+        <Stat
+          label="Blocks Found"
+          value={String(overview.blocks)}
+          color={overview.blocks > 0 ? "var(--neon-green)" : undefined}
+        />
         <Stat label="Switches" value={String(overview.switches)} />
       </div>
 
@@ -74,13 +71,13 @@ export function MeshOverviewPill({ apps, overview }: { apps: ForgeApp[]; overvie
         <span style={{ color: overview.rejected > 0 ? "#ff0080" : "var(--foreground)" }}>{overview.rejected} rejected</span>
         <span className="text-foreground/50">/</span>
         <span style={{ color: overview.stale > 0 ? "var(--neon-gold)" : "var(--foreground)" }}>{overview.stale} stale</span>
-            {(overview.lost ?? 0) > 0 && (
-        <>
-          <span className="text-foreground/50">·</span>
-          <span className="text-muted-foreground">{overview.lost} lost to reconnect</span>
-        </>
-      )}
-</div>
+        {(overview.lost ?? 0) > 0 && (
+          <>
+            <span className="text-foreground/50">·</span>
+            <span className="text-muted-foreground">{overview.lost} lost to reconnect</span>
+          </>
+        )}
+      </div>
 
       {overview.nodes.length > 0 && (
         <div className="mt-3 flex flex-col gap-2 border-t border-border/60 pt-3">
@@ -110,7 +107,7 @@ export function MeshOverviewPill({ apps, overview }: { apps: ForgeApp[]; overvie
                 <span className="flex min-w-0 flex-col gap-0.5">
                   <span className="whitespace-pre-wrap">
                     {n.miners} miner{n.miners === 1 ? "" : "s"} ({n.fleet_miners} fleet / {n.assigned_miners} assigned)
-                    {"  -  "}Hashrate: <span className="text-neon-cyan">{n.ths.toFixed(2)} TH/s</span>
+                    {"  -  "}Hashrate: <span className="text-neon-cyan">{formatHashrate(n.ths)}</span>
                   </span>
                   <span className="whitespace-pre-wrap">
                     Shares: <span style={{ color: "var(--neon-green)" }}>{n.accepted} accepted</span>
@@ -122,16 +119,15 @@ export function MeshOverviewPill({ apps, overview }: { apps: ForgeApp[]; overvie
                     <span style={{ color: n.blocks > 0 ? "var(--neon-green)" : "var(--foreground)" }}>{n.blocks}</span>
                   </span>
                   <span className="whitespace-pre-wrap">
-          Best share: {compact(n.best_share)}
-          {n.best_share_worker && <span className="text-muted-foreground">  ({n.best_share_worker})</span>}
-        </span>
+                    Best share: {compactNumber(n.best_share)}
+                    {n.best_share_worker && <span className="text-muted-foreground">  ({n.best_share_worker})</span>}
+                  </span>
                 </span>
               </div>
             );
           })}
         </div>
       )}
-
-          </div>
+    </div>
   );
 }

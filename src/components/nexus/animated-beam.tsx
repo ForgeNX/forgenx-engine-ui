@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useId, useState, type RefObject } from "react"
-import { motion } from "motion/react"
+import { motion, useReducedMotion } from "motion/react"
 
 import { cn } from "@/lib/utils"
 
@@ -49,6 +49,9 @@ export const AnimatedBeam: React.FC<AnimatedBeamProps> = ({
   endYOffset = 0,
 }) => {
   const id = useId()
+  // With reduced motion asked for, the gradient sits still: the beam still shows
+  // where the hashrate goes, without travelling along the line.
+  const still = useReducedMotion()
   const [pathD, setPathD] = useState("")
   const [svgDimensions, setSvgDimensions] = useState({ width: 0, height: 0 })
 
@@ -155,17 +158,21 @@ export const AnimatedBeam: React.FC<AnimatedBeamProps> = ({
             y1: "0%",
             y2: "0%",
           }}
-          animate={{
-            x1: gradientCoordinates.x1,
-            x2: gradientCoordinates.x2,
-            y1: gradientCoordinates.y1,
-            y2: gradientCoordinates.y2,
-          }}
+          animate={
+            still
+              ? { x1: "0%", x2: "100%", y1: "0%", y2: "0%" }
+              : {
+                  x1: gradientCoordinates.x1,
+                  x2: gradientCoordinates.x2,
+                  y1: gradientCoordinates.y1,
+                  y2: gradientCoordinates.y2,
+                }
+          }
           transition={{
             delay,
             duration,
             ease: [0.16, 1, 0.3, 1],
-            repeat,
+            repeat: still ? 0 : repeat,
             repeatDelay,
             repeatType: "reverse",
           }}

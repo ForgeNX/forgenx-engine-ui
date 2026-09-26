@@ -3,6 +3,8 @@ import { Lock, LockOpen } from "lucide-react";
 import { AuroraText } from "./aurora-text";
 import {
   assignMeshWorker,
+  FLEET_AUTO,
+  FLEET_WORKER,
   formatAllocation,
   parseAllocation,
   setMeshPins,
@@ -40,10 +42,10 @@ export function MeshAllocator({
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
 
-  const locked = !system && miner?.assignment === "AUTO";
+  const locked = !system && miner?.assignment === FLEET_AUTO;
   const source = system ? mesh?.system_target ?? "" : miner?.assignment ?? "";
   // Pins are saved on the engine, per miner and for Fleet Balance.
-  const pinWorker = system ? "__system__" : miner?.worker ?? "";
+  const pinWorker = system ? FLEET_WORKER : miner?.worker ?? "";
   const pinSource = (system ? mesh?.system_pins : miner?.pins) ?? [];
   const pinKey = pinSource.join(",");
   const togglePin = (sym: string) => {

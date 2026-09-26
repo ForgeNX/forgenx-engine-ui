@@ -1,8 +1,9 @@
 import { useRef, useState } from "react";
-import { Link2Off, Unplug } from "lucide-react";
+import { Unplug } from "lucide-react";
 import { AnimatedBeam } from "./animated-beam";
 import { RejectionList } from "./rejection-list";
-import { parseAllocation, type MeshMiner } from "@/lib/forge-api";
+import { compactNumber, formatHashrate } from "./format";
+import { FLEET_AUTO, parseAllocation, type MeshMiner } from "@/lib/forge-api";
 import type { ForgeApp } from "./nexus-data";
 
 // One miner, with a beam to each node it is allocated to. The node it is mining
@@ -12,16 +13,6 @@ import type { ForgeApp } from "./nexus-data";
 //
 // Its own component so each pill owns its refs — beams need a ref per endpoint,
 // and hooks cannot be called in a loop.
-// 115806 -> "115.8K".
-function compactDiff(n: number): string {
-  const units = ["", "K", "M", "G", "T"];
-  let i = 0;
-  while (n >= 1000 && i < units.length - 1) {
-    n /= 1000;
-    i++;
-  }
-  return `${n.toFixed(i === 0 ? 0 : 1)}${units[i]}`;
-}
 
 // Which figure a miner's hashrate came from. The miner's own is exact from its
 // first second; the relay's is inferred from the shares it has submitted; a
@@ -111,7 +102,7 @@ export function MinerPill({
   // when it has no allocation of its own.
   // A System Mesh miner's allocation is just "AUTO": the balancer decides the
   // coin, so the beam goes to wherever it has actually put the miner.
-  const isAuto = miner.assignment === "AUTO";
+  const isAuto = miner.assignment === FLEET_AUTO;
   const routed = coins
     .map((c) => c.toUpperCase())
     .filter((sym) => (miner.assigned && !isAuto ? (alloc[sym] ?? 0) > 0 : sym === active))
@@ -124,9 +115,6 @@ export function MinerPill({
   const beamsWhenUp = pending && !routed.includes(pending) ? [...routed, pending].slice(0, nodeRefs.length) : routed;
   // An offline miner is not mining anywhere, so it shows no nodes and no beams.
   const beams = miner.connected ? beamsWhenUp : [];
-
-  const hashrate = (th: number) =>
-    th >= 1000 ? `${(th / 1000).toFixed(2)} PH/s` : `${th.toFixed(2)} TH/s`;
 
   // "bitaxe/BM1370/v2.15.1" reads better as "Bitaxe BM1370"; the firmware version
   // is noise at this size.
@@ -173,19 +161,12 @@ export function MinerPill({
                 <span className="font-mono text-foreground">{miner.ip || "—"}</span>
               </span>
               <span className="mt-0.5 block whitespace-pre-wrap font-mono text-[0.7rem] text-foreground/90">
-                Hashrate:{" "}
-                {miner.connected ? (
-                  <>
-                    <span className="text-[0.72rem] text-neon-cyan">{hashrate(miner.hashrate_15m)}</span>
-                    {SOURCE_LABEL[miner.hashrate_source ?? ""] && (
-                      <span style={{ color: SOURCE_LABEL[miner.hashrate_source ?? ""].color }}>
-                        {" "}
-                        ({SOURCE_LABEL[miner.hashrate_source ?? ""].text})
-                      </span>
-                    )}
-                  </>
-                ) : (
-                  <span className="text-muted-foreground">offline</span>
+                Hashrate: <span className="text-[0.72rem] text-neon-cyan">{formatHashrate(miner.hashrate_15m)}</span>
+                {SOURCE_LABEL[miner.hashrate_source ?? ""] && (
+                  <span style={{ color: SOURCE_LABEL[miner.hashrate_source ?? ""].color }}>
+                    {" "}
+                    ({SOURCE_LABEL[miner.hashrate_source ?? ""].text})
+                  </span>
                 )}
                 {"  -  "}Asic: {(miner.asic_temp ?? 0) > 0 ? `${Math.round(miner.asic_temp ?? 0)}°` : "—"}
                 {(miner.asic_temp_max ?? 0) > 0 && ` / ${Math.round(miner.asic_temp_max ?? 0)}° max`}
@@ -194,27 +175,27 @@ export function MinerPill({
             </>
           ) : (
             <span className="mt-0.5 flex items-center gap-1.5 font-mono text-[0.7rem] font-semibold" style={{ color: "#e0115f" }}>
-                <Unplug className="size-3.5" />
-                Device offline
-                {miner.last_seen && awayFor(miner.last_seen) && (
-                  <span className="font-normal text-muted-foreground">
-                    {" "}
-                    - last seen {awayFor(miner.last_seen)} ago
-                  </span>
-                )}
-              </span>
+              <Unplug className="size-3.5" />
+              Device offline
+              {miner.last_seen && awayFor(miner.last_seen) && (
+                <span className="font-normal text-muted-foreground">
+                  {" "}
+                  - last seen {awayFor(miner.last_seen)} ago
+                </span>
+              )}
+            </span>
           )}
           {(miner.difficulty ?? 0) > 0 && (
             <span className="mt-0.5 block whitespace-pre-wrap font-mono text-[0.7rem] text-foreground/90">
-              Difficulty (current): {compactDiff(miner.difficulty ?? 0)}
-            {(miner.best_share ?? 0) > 0 && (
-              <>
-                {"  -  "}Best share: {compactDiff(miner.best_share ?? 0)}
-              </>
-            )}
+              Difficulty (current): {compactNumber(miner.difficulty ?? 0)}
+              {(miner.best_share ?? 0) > 0 && (
+                <>
+                  {"  -  "}Best share: {compactNumber(miner.best_share ?? 0)}
+                </>
+              )}
               {(miner.next_difficulty ?? 0) > 0 && (
                 <>
-                  {"  -  "}Next: <span className="text-neon-gold">{compactDiff(miner.next_difficulty ?? 0)}</span>
+                  {"  -  "}Next: <span className="text-neon-gold">{compactNumber(miner.next_difficulty ?? 0)}</span>
                 </>
               )}
             </span>
@@ -232,23 +213,23 @@ export function MinerPill({
                 }}
                 className="flex items-baseline gap-2 underline decoration-dotted underline-offset-2"
               >
-              <span style={{ color: (miner.shares_rejected ?? 0) > 0 ? "#ff0080" : "var(--foreground)" }}>
-              {miner.shares_rejected ?? 0} rejected
-              </span>
-              <span className="text-foreground/50">/</span>
-              <span style={{ color: (miner.shares_stale ?? 0) > 0 ? "var(--neon-gold)" : "var(--foreground)" }}>
-              {miner.shares_stale ?? 0} stale
-              </span>
+                <span style={{ color: (miner.shares_rejected ?? 0) > 0 ? "#ff0080" : "var(--foreground)" }}>
+                  {miner.shares_rejected ?? 0} rejected
+                </span>
+                <span className="text-foreground/50">/</span>
+                <span style={{ color: (miner.shares_stale ?? 0) > 0 ? "var(--neon-gold)" : "var(--foreground)" }}>
+                  {miner.shares_stale ?? 0} stale
+                </span>
               </button>
             ) : (
               <>
-              <span style={{ color: (miner.shares_rejected ?? 0) > 0 ? "#ff0080" : "var(--foreground)" }}>
-              {miner.shares_rejected ?? 0} rejected
-              </span>
-              <span className="text-foreground/50">/</span>
-              <span style={{ color: (miner.shares_stale ?? 0) > 0 ? "var(--neon-gold)" : "var(--foreground)" }}>
-              {miner.shares_stale ?? 0} stale
-              </span>
+                <span style={{ color: (miner.shares_rejected ?? 0) > 0 ? "#ff0080" : "var(--foreground)" }}>
+                  {miner.shares_rejected ?? 0} rejected
+                </span>
+                <span className="text-foreground/50">/</span>
+                <span style={{ color: (miner.shares_stale ?? 0) > 0 ? "var(--neon-gold)" : "var(--foreground)" }}>
+                  {miner.shares_stale ?? 0} stale
+                </span>
               </>
             )}
             {(miner.shares_lost ?? 0) > 0 && (
@@ -344,46 +325,43 @@ export function MinerPill({
           <button
             type="button"
             role="switch"
-            aria-checked={miner.assignment === "AUTO"}
+            aria-checked={isAuto}
             aria-label={`Include ${miner.worker} in Fleet Balance`}
             disabled={toggling}
             onClick={async (e) => {
               e.stopPropagation();
               setToggling(true);
               setToggleError("");
-              const ok = await onToggleSystem(miner.assignment !== "AUTO");
+              const ok = await onToggleSystem(!isAuto);
               setToggling(false);
               if (!ok) setToggleError("could not save");
             }}
             className="relative h-4 w-7 shrink-0 rounded-full border transition disabled:opacity-50"
             style={{
-              borderColor: miner.assignment === "AUTO" ? "var(--neon-cyan)" : "var(--border)",
-              background:
-                miner.assignment === "AUTO"
-                  ? "color-mix(in oklab, var(--neon-cyan) 25%, transparent)"
-                  : "var(--secondary)",
+              borderColor: isAuto ? "var(--neon-cyan)" : "var(--border)",
+              background: isAuto ? "color-mix(in oklab, var(--neon-cyan) 25%, transparent)" : "var(--secondary)",
             }}
           >
             <span
               className="absolute top-1/2 size-2.5 -translate-y-1/2 rounded-full transition-all"
               style={{
-                left: miner.assignment === "AUTO" ? "calc(100% - 0.8rem)" : "0.15rem",
-                background: miner.assignment === "AUTO" ? "var(--neon-cyan)" : "var(--muted-foreground)",
+                left: isAuto ? "calc(100% - 0.8rem)" : "0.15rem",
+                background: isAuto ? "var(--neon-cyan)" : "var(--muted-foreground)",
               }}
             />
           </button>
           <span className="text-[0.75rem] text-foreground/90">Include in Fleet Balance</span>
           {toggleError && <span className="text-[0.68rem] text-[#ff0080]">{toggleError}</span>}
-        {miner.next_rotation && untilRotation(miner.next_rotation) && (
-          <span className="ml-auto font-mono text-[0.72rem] text-foreground/90">
-            Next switch: <span className="text-neon-gold">{untilRotation(miner.next_rotation)}</span>
-          </span>
-        )}
-        {isAuto && miner.settled_until && settledFor(miner.settled_until) && (
-          <span className="font-mono text-[0.68rem] text-muted-foreground">
-            (settled here for another {settledFor(miner.settled_until)})
-          </span>
-        )}
+          {miner.next_rotation && untilRotation(miner.next_rotation) && (
+            <span className="ml-auto font-mono text-[0.72rem] text-foreground/90">
+              Next switch: <span className="text-neon-gold">{untilRotation(miner.next_rotation)}</span>
+            </span>
+          )}
+          {isAuto && miner.settled_until && settledFor(miner.settled_until) && (
+            <span className="font-mono text-[0.68rem] text-muted-foreground">
+              (settled here for another {settledFor(miner.settled_until)})
+            </span>
+          )}
         </span>
       )}
       {showRejections && (

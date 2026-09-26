@@ -455,12 +455,13 @@ export async function fetchEngineInfo(): Promise<EngineInfo | null> {
   return fetchJSON<EngineInfo>("/api/engine/info");
 }
 
-// engineUptimeSeconds: live uptime from /api/engine/stats (0 if unreachable).
-export async function fetchEngineUptime(): Promise<number> {
+// fetchEngineUptime: live uptime from /api/engine/stats, or null when the engine
+// cannot be reached - so a caller can tell "just started" from "down".
+export async function fetchEngineUptime(): Promise<number | null> {
   const stats = await fetchJSON<{ uptime_seconds?: number; coins?: Record<string, unknown> }>(
     "/api/engine/stats",
   );
-  return Math.floor(stats?.uptime_seconds ?? 0);
+  return stats ? Math.floor(stats.uptime_seconds ?? 0) : null;
 }
 
 // engineAction: start | stop | restart the engine via forgenxd.
@@ -544,6 +545,11 @@ export async function fetchCoinSV2List(): Promise<CoinSV2[]> {
 // reconnecting. /api/mesh/status describes the lot in one call: each worker's
 // active coin, its assignment if the user set one, and assignments whose miner
 // is currently offline — those still apply when it comes back.
+
+// A miner's assignment while Fleet Balance places it, and the worker name that
+// Fleet Balance's own pins are saved under.
+export const FLEET_AUTO = "AUTO";
+export const FLEET_WORKER = "__system__";
 
 export type MeshMiner = {
   worker: string;

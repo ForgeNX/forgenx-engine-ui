@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ChevronUp, ChevronDown } from "lucide-react";
 import { setMeshDefault, type MeshStatus } from "@/lib/forge-api";
+import { AuroraText } from "./aurora-text";
 import type { ForgeApp } from "./nexus-data";
 
 // A miner arriving on the mesh has no assignment, so it needs somewhere to go and
@@ -12,7 +13,6 @@ import type { ForgeApp } from "./nexus-data";
 // Coins installed but absent from the mesh configuration are listed dimmed rather
 // than hidden: a coin you can see you have, but cannot route to, is less
 // confusing than one that silently is not there.
-import { AuroraText } from "./aurora-text";
 
 export function MeshDefault({
   apps,

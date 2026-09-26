@@ -21,17 +21,24 @@ export function useEngineInfo() {
   return info;
 }
 
-// Engine uptime — polled every 5s.
-export function useEngineUptime() {
+// Engine uptime and whether it is answering — polled every 5s. online is null
+// until the first answer, so the header can say "checking" rather than guess.
+export function useEngineStatus() {
   const [uptime, setUptime] = useState<number>(0);
+  const [online, setOnline] = useState<boolean | null>(null);
   useEffect(() => {
     let alive = true;
-    const tick = () => fetchEngineUptime().then((u) => alive && setUptime(u));
+    const tick = () =>
+      fetchEngineUptime().then((u) => {
+        if (!alive) return;
+        setOnline(u !== null);
+        setUptime(u ?? 0);
+      });
     tick();
     const id = setInterval(tick, 5000);
     return () => { alive = false; clearInterval(id); };
   }, []);
-  return uptime;
+  return { uptime, online };
 }
 
 // Per-coin SV2 authority keys — fetched once, with a refresh() the regenerate

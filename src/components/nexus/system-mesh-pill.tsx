@@ -1,7 +1,8 @@
 import { useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { AnimatedBeam } from "./animated-beam";
-import { parseAllocation, type MeshStatus } from "@/lib/forge-api";
+import { formatHashrate } from "./format";
+import { FLEET_AUTO, parseAllocation, type MeshStatus } from "@/lib/forge-api";
 import type { ForgeApp } from "./nexus-data";
 
 // Fleet Balance, shown as a miner of its own at the top of the list: every
@@ -13,7 +14,6 @@ import type { ForgeApp } from "./nexus-data";
 // Unlike a miner split by hand, Fleet Balance puts each miner on one node and
 // leaves it there; the target is met by moving whole miners between nodes, not
 // by every miner rotating.
-export const SYSTEM_ID = "__system__";
 
 export function SystemMeshPill({
   apps,
@@ -42,7 +42,7 @@ export function SystemMeshPill({
     useRef<HTMLSpanElement>(null),
   ];
 
-  const included = mesh.miners.filter((m) => m.assignment === "AUTO" && m.connected);
+  const included = mesh.miners.filter((m) => m.assignment === FLEET_AUTO && m.connected);
   const total = included.reduce((s, m) => s + (m.hashrate_15m || 0), 0);
   const target = parseAllocation(mesh.system_target ?? "");
   const actual: Record<string, number> = {};
@@ -112,7 +112,7 @@ export function SystemMeshPill({
             </span>
           )}
           <span className="mt-0.5 block font-mono text-[0.8rem] text-foreground/90">
-            Total Hashrate: <span className="text-neon-cyan">{total.toFixed(2)} TH/s</span>
+            Total Hashrate: <span className="text-neon-cyan">{formatHashrate(total)}</span>
           </span>
         </div>
 

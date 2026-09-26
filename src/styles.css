@@ -555,3 +555,16 @@
   animation: shine var(--duration, 14s) infinite linear;
 }
 
+/* Honour the system's reduced-motion setting: loops stop and entrances land at
+   once. The beams in the Nexus tab handle this themselves, since their motion is
+   driven from script rather than CSS. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

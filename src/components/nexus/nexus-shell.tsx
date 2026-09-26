@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, FileText, Home, Info, Network, Settings, Share2, Users } from "lucide-react";
+import { FileText, Home, Info, Network, Settings, Share2, Users } from "lucide-react";
 
 import { HashrateChart } from "./hashrate-chart";
 import { HashrateDistribution } from "./distribution";
@@ -18,8 +18,9 @@ import { SettingsPanel } from "./settings-panel";
 import { StatPills } from "./stat-pills";
 import { NEXUS_TABS, type NexusTab } from "./nexus-data";
 import { useForgeApps } from "@/hooks/use-forge-apps";
-import { useEngineInfo, useEngineUptime, useCoinSV2List } from "@/hooks/use-engine-meta";
+import { useEngineInfo, useEngineStatus, useCoinSV2List } from "@/hooks/use-engine-meta";
 import { useMeshStatus } from "@/hooks/use-mesh-status";
+import { FLEET_WORKER } from "@/lib/forge-api";
 
 const TAB_ICONS: Record<NexusTab, typeof Home> = {
   Overview: Home,
@@ -40,7 +41,15 @@ export function NexusShell() {
   // it survives the status poll replacing the list.
   const [selectedMiner, setSelectedMiner] = useState<string | null>(null);
   const activeMiner = (mesh?.miners ?? []).find((m) => m.worker === selectedMiner) ?? null;
-  const engineUptime = useEngineUptime();
+  const { uptime: engineUptime, online: engineOnline } = useEngineStatus();
+  // The header badge says what the engine is actually doing: checking until its
+  // first answer, then online or offline from the 5s stats poll.
+  const status =
+    engineOnline === null
+      ? { label: "Checking", color: "var(--muted-foreground)", pulse: false }
+      : engineOnline
+        ? { label: "Online", color: "var(--neon-green)", pulse: true }
+        : { label: "Offline", color: "var(--neon-pink)", pulse: false };
   const { coins: sv2Coins, refresh: refreshSV2 } = useCoinSV2List();
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -108,22 +117,25 @@ export function NexusShell() {
           })}
         </nav>
 
-        <button
-          type="button"
+        <span
+          role="status"
+          aria-label={`Engine ${status.label.toLowerCase()}`}
           className="flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold tracking-[0.14em] uppercase"
           style={{
-            color: "var(--neon-green)",
-            borderColor: "color-mix(in oklab, var(--neon-green) 50%, transparent)",
-            boxShadow: "0 0 20px -8px var(--neon-green)",
+            color: status.color,
+            borderColor: `color-mix(in oklab, ${status.color} 50%, transparent)`,
+            boxShadow: `0 0 20px -8px ${status.color}`,
           }}
         >
           <span
-            className="size-1.5 rounded-full bg-neon-green"
-            style={{ animation: "pulse-glow 2.2s ease-in-out infinite" }}
+            className="size-1.5 rounded-full"
+            style={{
+              background: status.color,
+              animation: status.pulse ? "pulse-glow 2.2s ease-in-out infinite" : undefined,
+            }}
           />
-          Online
-          <ChevronDown className="size-3.5" />
-        </button>
+          {status.label}
+        </span>
         <EngineControls />
       </header>
 
@@ -178,7 +190,7 @@ export function NexusShell() {
             <div className="flex flex-col gap-4">
               <MeshActivityPanel apps={apps} activity={mesh?.activity ?? []} />
               <MeshActivityPanel apps={apps} activity={mesh?.activity ?? []} fleetOnly />
-              <MeshAllocator apps={apps} mesh={mesh} miner={activeMiner} system={selectedMiner === "__system__"} refresh={refreshMesh} />
+              <MeshAllocator apps={apps} mesh={mesh} miner={activeMiner} system={selectedMiner === FLEET_WORKER} refresh={refreshMesh} />
             </div>
           </div>
         ) : tab === "Settings" ? (
