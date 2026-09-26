@@ -36,6 +36,17 @@ const SOURCE_COLOUR: Record<string, string> = {
   scanner: "var(--neon-green)",
 };
 
+// Last share, to the second while it is recent: "12s ago", "4m 12s ago", then
+// the coarser "2h ago". Miners submit every few seconds, so "just now" hid the
+// difference between a miner that is submitting and one that has just stopped.
+function lastShareAgo(iso: string): string {
+  const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (!Number.isFinite(s)) return "—";
+  if (s < 60) return `${Math.max(0, s)}s ago`;
+  if (s < 3600) return `${Math.floor(s / 60)}m ${s % 60}s ago`;
+  return timeAgo(iso);
+}
+
 const lastShareMs = (r: WorkerRow) => (r.active?.last_share ? new Date(r.active.last_share).getTime() : 0);
 
 function sortRows(rows: WorkerRow[], key: SortKey, dir: "asc" | "desc"): WorkerRow[] {
@@ -222,7 +233,7 @@ function Row({ r, apps, open, onToggle }: { r: WorkerRow; apps: ForgeApp[]; open
         <span>
           <Label>Last share</Label>
           {r.online ? (
-            w?.last_share ? timeAgo(w.last_share) : "—"
+            w?.last_share ? lastShareAgo(w.last_share) : "—"
           ) : (
             <span style={{ color: "#e0115f" }}>{r.lastSeen ? `offline, seen ${timeAgo(r.lastSeen)}` : "offline"}</span>
           )}
@@ -322,6 +333,13 @@ function Detail({ r, apps }: { r: WorkerRow; apps: ForgeApp[] }) {
 }
 
 export function WorkersPanel({ apps, mesh }: { apps: ForgeApp[]; mesh: MeshStatus | null }) {
+  // Redraw each second so "last share" counts up between polls.
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setTick((n) => n + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+
   // The scanner's readings: model, temperatures and each miner's own uptime.
   const [found, setFound] = useState<FoundMiner[]>([]);
   useEffect(() => {
