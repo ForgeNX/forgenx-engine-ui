@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ChevronDown, RefreshCw } from "lucide-react";
+import { ChevronDown, RefreshCw, ScanLine } from "lucide-react";
 import { MoveToMeshModal } from "./move-to-mesh-modal";
 import {
   fetchFoundMiners,
@@ -382,10 +382,16 @@ export function MeshSettings() {
                 type="button"
                 onClick={() => setOpen((o) => !o)}
                 aria-expanded={open}
-                className="flex items-center gap-1 text-[0.7rem] font-semibold tracking-[0.18em] text-foreground uppercase transition hover:text-neon-cyan"
+                className="flex items-center gap-2 text-xs font-semibold tracking-[0.26em] text-neon-cyan uppercase transition hover:brightness-125"
               >
-                {settings.miners_found} Miner{settings.miners_found === 1 ? "" : "s"} Discovered
-                <ChevronDown className={`size-3 transition-transform ${open ? "rotate-180" : ""}`} />
+                <ScanLine className="size-4" />
+                <span>
+                  <span className="text-sm" style={{ color: "var(--neon-pink)" }}>
+                    {settings.miners_found}
+                  </span>{" "}
+                  Miner{settings.miners_found === 1 ? "" : "s"} Discovered
+                </span>
+                <ChevronDown className={`size-3.5 transition-transform ${open ? "rotate-180" : ""}`} />
               </button>
             ) : (
               <span className="text-[0.7rem] text-foreground/90">Not set</span>
