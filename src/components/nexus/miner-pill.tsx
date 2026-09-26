@@ -354,7 +354,7 @@ export function MinerPill({
           <span className="text-[0.75rem] text-foreground/90">Include in Fleet Balance</span>
         {isAuto && miner.settled_until && settledFor(miner.settled_until) && (
           <span className="font-mono text-[0.68rem] text-muted-foreground">
-            settled here for another {settledFor(miner.settled_until)}
+            (settled here for another {settledFor(miner.settled_until)})
           </span>
         )}
         </span>
