@@ -86,6 +86,12 @@ export function MeshSettings() {
     setConfirming(null);
     setMoving(f.host);
     const res = await moveMinerToMesh(f.host, worker);
+    if (res.ok) {
+      // The engine reserves the name it was given, so reading settings now moves
+      // next_name on before another miner can be moved with the same one.
+      const now = await fetchMeshSettings();
+      if (now) setSettings(now);
+    }
     setMoving(null);
     setMoveNote((n) => ({ ...n, [f.host]: res.ok ? (res.note ?? "moved") : (res.error ?? "failed") }));
     if (res.ok) {
@@ -543,7 +549,7 @@ export function MeshSettings() {
                           <button
                             type="button"
                             disabled={
-                              moving === f.host || !settings?.mesh_address || !nameFor(f).trim()
+                              moving !== null || !settings?.mesh_address || !nameFor(f).trim()
                             }
                             onClick={() => setConfirming(f.host)}
                             className="relative overflow-hidden rounded-md border px-2 py-0.5 text-[0.62rem] font-semibold transition disabled:opacity-40"

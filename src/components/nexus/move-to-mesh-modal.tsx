@@ -85,8 +85,9 @@ export function MoveToMeshModal({
 
         <p className="mt-3 text-[0.8rem] leading-relaxed text-foreground">
           <span style={{ color: "#e0115f" }}>⚠ Warning:</span> the pool this miner uses now will be lost,
-          and you will need its details if you ever want to set it back by hand. Its fallback pool and
-          every other setting are left alone.
+          and you will need its details if you ever want to set it back by hand. Its protocol is set
+          to Stratum V1 with extranonce subscribe on, which the mesh needs; its fallback pool and every
+          other setting are left alone.
         </p>
 
         <p className="mt-2 text-[0.8rem] leading-relaxed text-foreground">
