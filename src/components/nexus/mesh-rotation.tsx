@@ -89,11 +89,11 @@ export function MeshRotation({
 
       {rotating.length > 0 && (
         <div className="mt-4 border-t border-border/60 pt-3">
-          <p className="text-[0.6rem] tracking-[0.18em] text-muted-foreground uppercase">In Rotation Queue:</p>
+          <p className="text-[0.6rem] tracking-[0.18em] text-neon-cyan uppercase">In Rotation Queue:</p>
           {rotating.map((m) => (
             <p key={m.worker} className="mt-1.5 text-[0.75rem] text-foreground/90">
-              {m.worker}
-              <span className="ml-2 text-muted-foreground">{m.assignment.replace(/,/g, " / ")}</span>
+              {m.worker}:
+              <span className="ml-2 text-foreground">{m.assignment.replace(/,/g, " / ")}</span>
             </p>
           ))}
         </div>
