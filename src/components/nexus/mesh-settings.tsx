@@ -409,12 +409,12 @@ export function MeshSettings() {
                 {scanning ? "Scanning…" : "Rescan"}
               </button>
             )}
-            {settings?.network_start && (
-              <p className="mt-1 text-[0.68rem] leading-relaxed text-foreground/90">
-                Expand to see every miner found on your network, and whether each is on the mesh.
-              </p>
-            )}
           </div>
+          {settings?.network_start && (
+            <p className="mt-1 text-[0.68rem] leading-relaxed text-foreground/90">
+              Expand to see every miner found on your network, and whether each is on the mesh.
+            </p>
+          )}
           {error && <p className="mt-2 text-[0.7rem] text-[#ff0080]">{error}</p>}
           {open && (
             <div className="mt-3 flex flex-col gap-2 border-t border-border/60 pt-3">
