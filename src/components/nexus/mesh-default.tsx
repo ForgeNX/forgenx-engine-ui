@@ -129,9 +129,10 @@ export function MeshDefault({
         <h2 className="text-xs font-semibold tracking-[0.26em] text-neon-cyan uppercase">Node priority order</h2>
       </header>
 
-      <p className="mt-3 text-sm leading-relaxed text-foreground/90">
-        Where a miner starts when it joins the mesh, and where it falls back to when the node is
-        offline. Miners you have assigned to a node ignore this.
+      <p className="mt-3 text-[0.82rem] leading-relaxed text-foreground/90">
+        When a miner joins the mesh it will be assigned to the default node, and will use the fall
+        back/s if the default node is offline. Miners that you have assigned to solo on a node will
+        ignore this.
       </p>
 
       <div className="mt-4 flex flex-col gap-3">

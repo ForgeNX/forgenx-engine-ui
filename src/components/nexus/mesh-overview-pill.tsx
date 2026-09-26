@@ -55,7 +55,7 @@ export function MeshOverviewPill({ apps, overview }: { apps: ForgeApp[]; overvie
         <Stat label="Miners" value={String(overview.connected)} />
         <Stat label="Hashrate" value={formatHashrate(overview.total_ths)} color="var(--neon-cyan)" />
         <Stat label="Peak Hashrate" value={formatHashrate(overview.peak_ths)} />
-        <Stat label="Best share" value={compactNumber(overview.best_share)} />
+        <Stat label="Best share" value={compactNumber(overview.best_share)} color="var(--neon-cyan)" />
         <Stat
           label="Blocks Found"
           value={String(overview.blocks)}
@@ -119,7 +119,7 @@ export function MeshOverviewPill({ apps, overview }: { apps: ForgeApp[]; overvie
                     <span style={{ color: n.blocks > 0 ? "var(--neon-green)" : "var(--foreground)" }}>{n.blocks}</span>
                   </span>
                   <span className="whitespace-pre-wrap">
-                    Best share: {compactNumber(n.best_share)}
+                    Best share: <span className="text-neon-cyan">{compactNumber(n.best_share)}</span>
                     {n.best_share_worker && <span className="text-muted-foreground">  ({n.best_share_worker})</span>}
                   </span>
                 </span>

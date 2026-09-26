@@ -456,7 +456,7 @@ export function MeshSettings() {
             )}
           </div>
           {settings?.network_start && (
-            <p className="mt-1 text-[0.68rem] leading-relaxed text-foreground/90">
+            <p className="mt-1 text-[0.82rem] leading-relaxed text-foreground/90">
               Expand to see every miner found on your network, and whether each is on the mesh.
             </p>
           )}
@@ -522,7 +522,7 @@ export function MeshSettings() {
                     </p>
                     {!f.on_mesh && (
                       <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                        <span className="text-[0.65rem] text-foreground/90">Worker name:</span>
+                        <span className="text-[0.65rem] text-foreground/90">Mesh allocated worker name:</span>
                         <input
                           className="w-40 rounded-md border border-border/70 bg-secondary/25 px-2 py-0.5 font-mono text-[0.65rem] text-foreground focus:border-neon-cyan focus:outline-none disabled:opacity-60"
                           value={

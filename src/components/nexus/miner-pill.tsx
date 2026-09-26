@@ -190,7 +190,7 @@ export function MinerPill({
               Difficulty (current): {compactNumber(miner.difficulty ?? 0)}
               {(miner.best_share ?? 0) > 0 && (
                 <>
-                  {"  -  "}Best share: {compactNumber(miner.best_share ?? 0)}
+                  {"  -  "}Best share: <span className="text-neon-cyan">{compactNumber(miner.best_share ?? 0)}</span>
                 </>
               )}
               {(miner.next_difficulty ?? 0) > 0 && (
