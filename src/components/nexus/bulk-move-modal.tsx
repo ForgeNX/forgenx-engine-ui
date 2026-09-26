@@ -117,7 +117,7 @@ export function BulkMoveModal({
                     aria-checked={r.include}
                     aria-label={`Move ${r.miner.worker}`}
                     onClick={() => onToggle(r.miner.host)}
-                    className="flex size-3.5 items-center justify-center rounded-sm border transition"
+                    className="flex size-3.5 items-center justify-center rounded-[2px] border transition"
                     style={{
                       borderColor: r.include ? "var(--neon-cyan)" : "var(--border)",
                       background: r.include ? "color-mix(in oklab, var(--neon-cyan) 25%, transparent)" : "transparent",
@@ -174,9 +174,9 @@ export function BulkMoveModal({
         {!started && (
           <>
             <p className="mt-3 text-[0.8rem] leading-relaxed text-foreground">
-              <span style={{ color: "#e0115f" }}>⚠ Warning:</span> the primary pool each miner uses now will be lost,
-              and you should record its details if you wish to set it back by hand later. Fallback pools and other
-              settings are left alone.
+              <span style={{ color: "#e0115f" }}>⚠ Warning:</span> the primary pool each miner uses now will be
+              overridden, you should record its details if you wish to set it back manually later. Fallback pools
+              and other settings are left alone.
             </p>
             <p className="mt-2 text-[0.8rem] leading-relaxed text-foreground">
               <span className="text-neon-cyan">ⓘ Note:</span>{" "}
@@ -184,7 +184,7 @@ export function BulkMoveModal({
                 ? "Worker names are given in sequence as each miner is moved. "
                 : "Each miner keeps the worker name shown. "}
               {includeNew
-                ? "They will join Fleet Balance, since Include new miners is on."
+                ? "They will join the Fleet Balance, as the Include New Miners setting is enabled."
                 : "They will mine to the first online node in your Node Priority Order until you allocate them."}
             </p>
           </>
