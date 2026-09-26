@@ -681,7 +681,7 @@ export async function fetchMeshStatus(): Promise<MeshStatus | null> {
 }
 
 // Sets how long a full rotation cycle takes for miners split across coins. The
-// engine clamps it to between fifteen minutes and six hours.
+// engine clamps it to between one hour and twenty-four hours.
 export async function setMeshInterval(
   interval: string,
 ): Promise<{ ok: boolean; note: string }> {

@@ -101,7 +101,13 @@ export function MeshSettings() {
   const [prefix, setPrefix] = useState("");
   const [address, setAddress] = useState("");
   const [addressSaved, setAddressSaved] = useState(false);
+  // A suggestion for the address field, never saved on its own. A loopback
+  // hostname is no use to a miner, so it falls back to an example.
+  const host = window.location.hostname;
+  const suggestedAddress = /^(localhost|127\.|\[?::1\]?$)/.test(host) ? "192.168.1.10" : host;
   const saveAddress = async () => {
+    // Leaving the field without changing it saves nothing.
+    if (address.trim() === (settings?.mesh_address ?? "")) return;
     const res = await saveMeshSettings({ mesh_address: address.trim() });
     if (res.ok && res.settings) {
       setSettings(res.settings);
@@ -154,10 +160,10 @@ export function MeshSettings() {
     setEnd(s.network_end);
     if (s.discovered_sort) setFoundSort(s.discovered_sort);
     setPrefix(s.name_prefix ?? "");
-    // Prefilled from however you reached ForgeNX, which is usually the address
-    // miners can reach too - but confirmed rather than assumed, since a miner
-    // pointed somewhere unreachable fails quietly.
-    setAddress(s.mesh_address || window.location.hostname);
+    // Only ever what the engine has saved. The browser's hostname is offered as
+    // the placeholder instead of filled in: over a tunnel it is "localhost", and
+    // a miner pointed somewhere unreachable fails quietly.
+    setAddress(s.mesh_address ?? "");
   };
 
   useEffect(() => {
@@ -263,8 +269,8 @@ export function MeshSettings() {
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <input
             className={`${input} !w-auto`}
-            size={Math.max(address.length, 14)}
-            placeholder="192.168.1.10"
+            size={Math.max(address.length, suggestedAddress.length, 14)}
+            placeholder={suggestedAddress}
             value={address}
             onChange={(e) => setAddress(e.target.value)}
             onBlur={saveAddress}
