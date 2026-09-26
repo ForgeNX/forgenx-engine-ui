@@ -47,12 +47,23 @@ export function MeshAllocator({
   const pinSource = (system ? mesh?.system_pins : miner?.pins) ?? [];
   const pinKey = pinSource.join(",");
   const togglePin = (sym: string) => {
+    const before = pinned;
     const next = { ...pinned, [sym]: !pinned[sym] };
     setPinned(next);
     if (pinWorker) {
-      setMeshPins(pinWorker, Object.keys(next).filter((c) => next[c])).then(() => refresh());
+      setMeshPins(pinWorker, Object.keys(next).filter((c) => next[c])).then((ok) => {
+        // A pin the engine did not keep is put back, so what is shown is what holds.
+        if (!ok) {
+          setPinned(before);
+          setNote("could not save the pin");
+          setTimeout(() => setNote(""), 6000);
+        }
+        refresh();
+      });
     }
   };
+  // Only the keys that move a slider save it; Tab or Shift on the way past do not.
+  const SLIDER_KEYS = new Set(["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End", "PageUp", "PageDown"]);
 
   useEffect(() => {
     if (!system && !miner) return;
@@ -254,7 +265,9 @@ export function MeshAllocator({
                 }}
                 onMouseUp={() => save()}
                 onTouchEnd={() => save()}
-                onKeyUp={() => save()}
+                onKeyUp={(e) => {
+                  if (SLIDER_KEYS.has(e.key)) save();
+                }}
                 className="w-full accent-[var(--neon-cyan)] disabled:opacity-40"
                 aria-label={`${app?.ticker ?? sym} share`}
               />

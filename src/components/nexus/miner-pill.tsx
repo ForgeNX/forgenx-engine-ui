@@ -82,10 +82,14 @@ export function MinerPill({
   miner: MeshMiner;
   selected: boolean;
   onSelect: () => void;
-  onToggleSystem?: (on: boolean) => void;
+  onToggleSystem?: (on: boolean) => Promise<boolean>;
 }) {
   // The refused shares behind the counts, shown on request.
   const [showRejections, setShowRejections] = useState(false);
+  // The Fleet Balance switch waits for the engine, so it cannot be sent twice,
+  // and says so when the engine refuses.
+  const [toggling, setToggling] = useState(false);
+  const [toggleError, setToggleError] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
   const fromRef = useRef<HTMLSpanElement>(null);
   const nodeRefs = [
@@ -342,11 +346,16 @@ export function MinerPill({
             role="switch"
             aria-checked={miner.assignment === "AUTO"}
             aria-label={`Include ${miner.worker} in Fleet Balance`}
-            onClick={(e) => {
+            disabled={toggling}
+            onClick={async (e) => {
               e.stopPropagation();
-              onToggleSystem(miner.assignment !== "AUTO");
+              setToggling(true);
+              setToggleError("");
+              const ok = await onToggleSystem(miner.assignment !== "AUTO");
+              setToggling(false);
+              if (!ok) setToggleError("could not save");
             }}
-            className="relative h-4 w-7 shrink-0 rounded-full border transition"
+            className="relative h-4 w-7 shrink-0 rounded-full border transition disabled:opacity-50"
             style={{
               borderColor: miner.assignment === "AUTO" ? "var(--neon-cyan)" : "var(--border)",
               background:
@@ -364,6 +373,7 @@ export function MinerPill({
             />
           </button>
           <span className="text-[0.75rem] text-foreground/90">Include in Fleet Balance</span>
+          {toggleError && <span className="text-[0.68rem] text-[#ff0080]">{toggleError}</span>}
         {miner.next_rotation && untilRotation(miner.next_rotation) && (
           <span className="ml-auto font-mono text-[0.72rem] text-foreground/90">
             Next switch: <span className="text-neon-gold">{untilRotation(miner.next_rotation)}</span>
@@ -376,7 +386,12 @@ export function MinerPill({
         )}
         </span>
       )}
-      {showRejections && <RejectionList worker={miner.worker} />}
+      {showRejections && (
+        // Clicks in the list are for reading it, not for selecting the miner.
+        <div onClick={(e) => e.stopPropagation()}>
+          <RejectionList worker={miner.worker} />
+        </div>
+      )}
     </div>
   );
 }

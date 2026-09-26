@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronDown, RefreshCw, ScanLine } from "lucide-react";
 import { MoveToMeshModal } from "./move-to-mesh-modal";
 import {
@@ -55,6 +55,12 @@ export function MeshSettings() {
   const [open, setOpen] = useState(false);
   const [found, setFound] = useState<FoundMiner[]>([]);
   const [foundSort, setFoundSort] = useState("name:asc");
+  // Whether the found list has been read at least once, so an empty list can
+  // say "none found" rather than "reading" forever.
+  const [foundLoaded, setFoundLoaded] = useState(false);
+  // Set once the user picks a sort, so the saved one arriving late does not
+  // overwrite their choice.
+  const sortChosen = useRef(false);
   // The worker name each discovered miner would take on the mesh. Held here while
   // the user decides: it is only needed at the moment a miner is moved across.
   const [renames, setRenames] = useState<Record<string, string>>({});
@@ -67,11 +73,19 @@ export function MeshSettings() {
   const [scanning, setScanning] = useState(false);
   const rescan = async () => {
     setScanning(true);
-    await rescanMiners();
+    setError("");
+    if (!(await rescanMiners())) {
+      setScanning(false);
+      setError("the engine would not start a scan");
+      return;
+    }
     // A sweep takes a few seconds; give it time before reading the list back.
     setTimeout(async () => {
       const list = await fetchFoundMiners();
-      setFound(list);
+      if (list) {
+        setFound(list);
+        setFoundLoaded(true);
+      }
       const s2 = await fetchMeshSettings();
       if (s2) setSettings(s2);
       setScanning(false);
@@ -98,7 +112,7 @@ export function MeshSettings() {
       // The miner restarts and reconnects; the list catches up on its own.
       setTimeout(async () => {
         const list = await fetchFoundMiners();
-        setFound(list);
+        if (list) setFound(list);
         const s2 = await fetchMeshSettings();
         if (s2) setSettings(s2);
       }, 75_000);
@@ -117,27 +131,37 @@ export function MeshSettings() {
     const res = await saveMeshSettings({ mesh_address: address.trim() });
     if (res.ok && res.settings) {
       setSettings(res.settings);
+      setError("");
       setAddressSaved(true);
       setTimeout(() => setAddressSaved(false), 3000);
     }
     else setError(res.error ?? "could not save");
   };
   const savePrefix = async () => {
+    if (prefix.trim() === (settings?.name_prefix ?? "")) return;
     const res = await saveMeshSettings({ name_prefix: prefix.trim() });
-    if (res.ok && res.settings) setSettings(res.settings);
-    else setError(res.error ?? "could not save");
+    if (res.ok && res.settings) {
+      setSettings(res.settings);
+      setError("");
+    } else setError(res.error ?? "could not save");
   };
   const toggleAutoName = async () => {
     if (!settings) return;
     const next = !settings.auto_name;
     setSettings({ ...settings, auto_name: next });
     const res = await saveMeshSettings({ auto_name: next });
-    if (res.ok && res.settings) setSettings(res.settings);
-    else setSettings({ ...settings, auto_name: !next });
+    if (res.ok && res.settings) {
+      setSettings(res.settings);
+      setError("");
+    } else {
+      setSettings((prev) => (prev ? { ...prev, auto_name: !next } : prev));
+      setError(res.error ?? "could not save");
+    }
   };
   const chooseFoundSort = (key: FoundSortKey, first: "asc" | "desc") => {
     const [cur, dir] = foundSort.split(":");
     const next = cur === key ? `${key}:${dir === "asc" ? "desc" : "asc"}` : `${key}:${first}`;
+    sortChosen.current = true;
     setFoundSort(next);
     saveMeshSettings({ discovered_sort: next });
   };
@@ -148,7 +172,10 @@ export function MeshSettings() {
     let live = true;
     const load = async () => {
       const list = await fetchFoundMiners();
-      if (live) setFound(list);
+      if (live && list) {
+        setFound(list);
+        setFoundLoaded(true);
+      }
     };
     load();
     const t = setInterval(load, 30_000);
@@ -164,7 +191,7 @@ export function MeshSettings() {
     setSettings(s);
     setStart(s.network_start);
     setEnd(s.network_end);
-    if (s.discovered_sort) setFoundSort(s.discovered_sort);
+    if (s.discovered_sort && !sortChosen.current) setFoundSort(s.discovered_sort);
     setPrefix(s.name_prefix ?? "");
     // Only ever what the engine has saved. The browser's hostname is offered as
     // the placeholder instead of filled in: over a tunnel it is "localhost", and
@@ -197,8 +224,12 @@ export function MeshSettings() {
     setSettings(res.settings);
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
-    // A new range triggers a sweep; the count settles within a minute.
-    setTimeout(load, 45_000);
+    // A new range triggers a sweep; the count settles within a minute. Only the
+    // settings are re-read, so fields being edited are left alone.
+    setTimeout(async () => {
+      const s2 = await fetchMeshSettings();
+      if (s2) setSettings(s2);
+    }, 45_000);
   };
 
   const toggleIncludeNew = async () => {
@@ -207,7 +238,7 @@ export function MeshSettings() {
     setSettings({ ...settings, include_new: next });
     const res = await saveMeshSettings({ include_new: next });
     if (!res.ok || !res.settings) {
-      setSettings({ ...settings, include_new: !next });
+      setSettings((prev) => (prev ? { ...prev, include_new: !next } : prev));
       setError(res.error ?? "could not save");
       return;
     }
@@ -453,7 +484,11 @@ export function MeshSettings() {
                   );
                 })}
               </div>
-              {found.length === 0 && <p className="text-[0.7rem] text-foreground/90">Reading miners…</p>}
+              {found.length === 0 && (
+                <p className="text-[0.7rem] text-foreground/90">
+                  {foundLoaded ? "No miners found on this network yet." : "Reading miners…"}
+                </p>
+              )}
               {sortFound(found, foundSort).map((f) => {
                 const badge = f.on_mesh
                   ? { label: `Mesh · ${f.mesh_coin}`, color: "var(--neon-cyan)" }

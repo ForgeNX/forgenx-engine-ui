@@ -809,9 +809,11 @@ export type FoundMiner = {
   points_at_mesh: boolean;
 };
 
-export async function fetchFoundMiners(): Promise<FoundMiner[]> {
+// null when the engine could not be reached, so callers keep the list they have
+// rather than showing it as empty.
+export async function fetchFoundMiners(): Promise<FoundMiner[] | null> {
   const r = await fetchJSON<{ miners: FoundMiner[] }>("/api/mesh/miners");
-  return r?.miners ?? [];
+  return r ? (r.miners ?? []) : null;
 }
 
 // Session totals for the mesh, since the engine last started.

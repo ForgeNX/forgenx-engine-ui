@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { AlertTriangle } from "lucide-react";
 import type { FoundMiner } from "@/lib/forge-api";
@@ -27,15 +27,42 @@ export function MoveToMeshModal({
   onCancel: () => void;
 }) {
   const renaming = worker !== miner.worker;
+  const panelRef = useRef<HTMLDivElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  // Read through a ref so the key handler below is set up once, not on every
+  // render the parent gives it a new function.
+  const closeRef = useRef(onCancel);
+  closeRef.current = busy ? () => {} : onCancel;
 
-  // Escape closes it, as a dialog should.
+  // Focus starts on Cancel, the safe choice, and goes back to whatever opened
+  // the dialog when it closes.
+  useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null;
+    cancelRef.current?.focus();
+    return () => opener?.focus?.();
+  }, []);
+
+  // Escape closes it, as a dialog should - except while the move is running,
+  // when closing would hide the result. Tab stays within the dialog.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onCancel();
+      if (e.key === "Escape") closeRef.current();
+      if (e.key !== "Tab" || !panelRef.current) return;
+      const items = panelRef.current.querySelectorAll<HTMLElement>("button:not([disabled])");
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onCancel]);
+  }, []);
 
   // Rendered at the top of the document rather than where it sits in the tree:
   // inside a scrolling column, a fixed overlay is positioned against that column
@@ -46,9 +73,10 @@ export function MoveToMeshModal({
       role="dialog"
       aria-modal="true"
       aria-label={`Move ${miner.worker} to the mesh`}
-      onClick={onCancel}
+      onClick={() => closeRef.current()}
     >
       <div
+        ref={panelRef}
         className="panel-neon w-full max-w-md p-5"
         style={{ background: "var(--background)" }}
         onClick={(e) => e.stopPropagation()}
@@ -99,6 +127,7 @@ export function MoveToMeshModal({
 
         <div className="mt-4 flex justify-end gap-2">
           <button
+            ref={cancelRef}
             type="button"
             onClick={onCancel}
             disabled={busy}

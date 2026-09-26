@@ -1,5 +1,5 @@
 import { Share2, Link2Off } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   assignMeshWorker,
   fetchMeshSettings,
@@ -65,14 +65,18 @@ export function MeshPanel({
   // How the miner list is sorted, saved on the engine like the other Nexus
   // settings so it holds across reloads, restarts and devices.
   const [sort, setSort] = useState("name:asc");
+  // Set once the user picks a sort, so the saved one arriving late does not
+  // overwrite their choice.
+  const sortChosen = useRef(false);
   useEffect(() => {
     fetchMeshSettings().then((st) => {
-      if (st?.miner_sort) setSort(st.miner_sort);
+      if (st?.miner_sort && !sortChosen.current) setSort(st.miner_sort);
     });
   }, []);
   const chooseSort = (key: SortKey, first: "asc" | "desc") => {
     const [cur, dir] = sort.split(":");
     const next = cur === key ? `${key}:${dir === "asc" ? "desc" : "asc"}` : `${key}:${first}`;
+    sortChosen.current = true;
     setSort(next);
     saveMeshSettings({ miner_sort: next });
   };
@@ -184,8 +188,9 @@ export function MeshPanel({
                 // Out of the System Mesh, a miner is pinned where it is rather
                 // than jumping anywhere.
                 const here = (m.active_coin || mesh.coins[0] || "").toUpperCase();
-                await assignMeshWorker(m.worker, on ? "AUTO" : `${here}:100`);
+                const res = await assignMeshWorker(m.worker, on ? "AUTO" : `${here}:100`);
                 refresh();
+                return res.ok;
               }}
             />
           ))
