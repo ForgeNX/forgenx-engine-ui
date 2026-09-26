@@ -139,6 +139,8 @@ export function MinerPill({
       tabIndex={0}
       onClick={onSelect}
       onKeyDown={(e) => {
+        // Keys on the buttons inside the pill are theirs, not the pill's.
+        if (e.target !== e.currentTarget) return;
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           onSelect();

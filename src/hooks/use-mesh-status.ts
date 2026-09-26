@@ -19,12 +19,18 @@ export function useMeshStatus() {
     try {
       const next = await fetchMeshStatus();
       if (cancelled.current) return;
+      // null means the engine could not be reached (it answers enabled:false
+      // when the mesh is off). Keep the last good state rather than blanking
+      // it, so a restart does not read as "Mesh disabled".
+      if (!next) {
+        setError("engine unreachable");
+        return;
+      }
       setMesh(next);
       setError(null);
+      setLoading(false);
     } catch (e) {
       if (!cancelled.current) setError(e instanceof Error ? e.message : "failed to load");
-    } finally {
-      if (!cancelled.current) setLoading(false);
     }
   }, []);
 
