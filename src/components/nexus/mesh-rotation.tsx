@@ -89,7 +89,7 @@ export function MeshRotation({
 
       {rotating.length > 0 && (
         <div className="mt-4 border-t border-border/60 pt-3">
-          <p className="text-[0.6rem] tracking-[0.18em] text-muted-foreground uppercase">Rotating now</p>
+          <p className="text-[0.6rem] tracking-[0.18em] text-muted-foreground uppercase">In Rotation Queue:</p>
           {rotating.map((m) => (
             <p key={m.worker} className="mt-1.5 text-[0.75rem] text-foreground/90">
               {m.worker}
