@@ -176,7 +176,7 @@ export function NexusShell() {
           <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1fr)]">
             <div className="flex flex-col gap-4">
               <MeshDefault apps={apps} mesh={mesh} refresh={refreshMesh} />
-              <MeshRotation mesh={mesh} refresh={refreshMesh} />
+              <MeshRotation apps={apps} mesh={mesh} refresh={refreshMesh} />
               <MeshSettings />
             </div>
             <MeshPanel

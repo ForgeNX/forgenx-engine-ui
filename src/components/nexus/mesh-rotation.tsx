@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Timer } from "lucide-react";
 import { setMeshInterval, type MeshStatus } from "@/lib/forge-api";
+import type { ForgeApp } from "./nexus-data";
 
 // Rotation splits a miner's time between coins. Worth being plain that this
 // divides its expected blocks rather than adding to them — it is a way to be paid
@@ -25,12 +26,16 @@ const CHOICES = [
 ];
 
 export function MeshRotation({
+  apps,
   mesh,
   refresh,
 }: {
+  apps: ForgeApp[];
   mesh: MeshStatus | null;
   refresh: () => void;
 }) {
+  const colourOf = (sym: string) =>
+    apps.find((a) => a.id.toUpperCase() === sym.trim().toUpperCase())?.color ?? "var(--foreground)";
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
 
@@ -93,7 +98,17 @@ export function MeshRotation({
           {rotating.map((m) => (
             <p key={m.worker} className="mt-1.5 text-[0.75rem] text-foreground/90">
               {m.worker}:
-              <span className="ml-2 text-foreground">{m.assignment.replace(/,/g, " / ")}</span>
+              <span className="ml-2 text-foreground">
+                {m.assignment.split(",").map((pair, i) => {
+                  const [sym, pct] = pair.split(":");
+                  return (
+                    <span key={sym}>
+                      {i > 0 && " / "}
+                      <span style={{ color: colourOf(sym) }}>{sym.trim()}</span>:{pct}
+                    </span>
+                  );
+                })}
+              </span>
             </p>
           ))}
         </div>
