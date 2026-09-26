@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchRejections, type Rejection } from "@/lib/forge-api";
+import { fetchRejectionsFor, type Rejection } from "@/lib/forge-api";
 
 // The recent shares the pool refused for one miner, and why. Opened from the
 // share counts on a miner's pill - a count on its own says something went wrong,
@@ -7,13 +7,19 @@ import { fetchRejections, type Rejection } from "@/lib/forge-api";
 export function RejectionList({ worker }: { worker: string }) {
   const [list, setList] = useState<Rejection[] | null>(null);
 
+  // Read on opening and kept current while open, asking only for this miner's
+  // shares. A failed read keeps what is already shown.
   useEffect(() => {
     let live = true;
-    fetchRejections().then((all) => {
-      if (live) setList(all[worker] ?? []);
-    });
+    const load = async () => {
+      const next = await fetchRejectionsFor(worker);
+      if (live && next) setList(next);
+    };
+    load();
+    const t = setInterval(load, 15_000);
     return () => {
       live = false;
+      clearInterval(t);
     };
   }, [worker]);
 

@@ -666,7 +666,18 @@ export type MeshStatus = {
   system_pins?: string[];
   overview?: MeshOverview;
   activity?: MeshActivity[];
+  // Blocks mesh miners have found this session, newest first.
+  found_blocks?: FoundBlock[];
   miners: MeshMiner[];
+};
+
+// A block found by a miner on the mesh, from the engine's block record.
+export type FoundBlock = {
+  at: string;
+  worker: string;
+  coin: string;
+  height: number;
+  hash: string;
 };
 
 export async function fetchMeshStatus(): Promise<MeshStatus | null> {
@@ -682,6 +693,7 @@ export async function fetchMeshStatus(): Promise<MeshStatus | null> {
     system_pins: s.system_pins ?? [],
     overview: s.overview,
     activity: s.activity ?? [],
+    found_blocks: s.found_blocks ?? [],
     miners: s.miners ?? [],
   };
 }
@@ -863,9 +875,13 @@ export type Rejection = {
   actual: number;
 };
 
-export async function fetchRejections(): Promise<Record<string, Rejection[]>> {
-  const r = await fetchJSON<{ rejections: Record<string, Rejection[]> }>("/api/miners/rejections");
-  return r?.rejections ?? {};
+// One worker's refused shares, or null when the engine could not be reached so
+// the caller can keep what it already shows.
+export async function fetchRejectionsFor(worker: string): Promise<Rejection[] | null> {
+  const r = await fetchJSON<{ rejections: Rejection[] | null }>(
+    `/api/miners/rejections?worker=${encodeURIComponent(worker)}`,
+  );
+  return r ? (r.rejections ?? []) : null;
 }
 
 // Points a miner at the mesh: its pool, protocol and worker name. Only AxeOS
@@ -903,7 +919,8 @@ export async function rescanMiners(): Promise<boolean> {
 // events, so it clears when the engine restarts.
 export type MeshActivity = {
   at: string;
-  kind: "switch" | "balancer" | "join" | "leave";
+  // "block" entries are added by the tab from found_blocks, not sent by the mesh.
+  kind: "switch" | "balancer" | "join" | "leave" | "block";
   worker: string;
   from?: string;
   to?: string;

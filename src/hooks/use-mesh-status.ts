@@ -12,6 +12,9 @@ export function useMeshStatus() {
   const [mesh, setMesh] = useState<MeshStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // When the last good read arrived, so a failed poll can say how old the
+  // figures on screen are.
+  const [updatedAt, setUpdatedAt] = useState<number | null>(null);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const cancelled = useRef(false);
 
@@ -28,6 +31,7 @@ export function useMeshStatus() {
       }
       setMesh(next);
       setError(null);
+      setUpdatedAt(Date.now());
       setLoading(false);
     } catch (e) {
       if (!cancelled.current) setError(e instanceof Error ? e.message : "failed to load");
@@ -44,5 +48,5 @@ export function useMeshStatus() {
     };
   }, [load]);
 
-  return { mesh, loading, error, refresh: load };
+  return { mesh, loading, error, updatedAt, refresh: load };
 }

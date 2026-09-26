@@ -17,3 +17,15 @@ export function compactNumber(n: number): string {
   }
   return `${n.toFixed(i === 0 ? 0 : 2)}${units[i]}`;
 }
+
+// How long ago something happened, in the units that matter: "just now", "4m
+// ago", "3h ago", "2d ago". Takes an ISO time or epoch milliseconds.
+export function timeAgo(when: string | number): string {
+  const ms = typeof when === "number" ? when : new Date(when).getTime();
+  const mins = Math.floor((Date.now() - ms) / 60_000);
+  if (!Number.isFinite(mins)) return "";
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  return hours < 48 ? `${hours}h ago` : `${Math.floor(hours / 24)}d ago`;
+}

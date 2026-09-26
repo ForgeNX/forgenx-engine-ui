@@ -12,6 +12,8 @@ import {
 import { MinerPill } from "./miner-pill";
 import { SystemMeshPill } from "./system-mesh-pill";
 import { MeshOverviewPill } from "./mesh-overview-pill";
+import { FoundBlockBanner } from "./found-block-banner";
+import { StaleBadge } from "./stale-badge";
 import type { ForgeApp } from "./nexus-data";
 
 // One pill per meshed miner. Selecting a pill hands it to the allocator, so this
@@ -56,6 +58,8 @@ export function MeshPanel({
   selected,
   onSelect,
   refresh,
+  stale = false,
+  updatedAt = null,
 }: {
   apps: ForgeApp[];
   mesh: MeshStatus | null;
@@ -63,6 +67,9 @@ export function MeshPanel({
   selected: string | null;
   onSelect: (worker: string | null) => void;
   refresh: () => void;
+  // The last poll failed, so what is shown is the last good read.
+  stale?: boolean;
+  updatedAt?: number | null;
 }) {
   // How the miner list is sorted, saved on the engine like the other Nexus
   // settings so it holds across reloads, restarts and devices.
@@ -108,6 +115,7 @@ export function MeshPanel({
       <header className="flex items-center gap-3">
         <Share2 className="size-4 text-neon-cyan" />
         <h2 className="text-xs font-semibold tracking-[0.26em] text-neon-cyan uppercase">Meshed miners</h2>
+        <StaleBadge stale={stale} updatedAt={updatedAt} />
       </header>
 
       <p className="mt-3 text-sm leading-relaxed text-foreground/90">
@@ -130,6 +138,7 @@ export function MeshPanel({
           </div>
         )}
 
+        <FoundBlockBanner apps={apps} blocks={mesh.found_blocks ?? []} />
         <MeshOverviewPill apps={apps} overview={mesh.overview} />
         <SystemMeshPill
           apps={apps}

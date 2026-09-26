@@ -20,7 +20,7 @@ import { NEXUS_TABS, type NexusTab } from "./nexus-data";
 import { useForgeApps } from "@/hooks/use-forge-apps";
 import { useEngineInfo, useEngineStatus, useCoinSV2List } from "@/hooks/use-engine-meta";
 import { useMeshStatus } from "@/hooks/use-mesh-status";
-import { FLEET_WORKER } from "@/lib/forge-api";
+import { FLEET_WORKER, type MeshActivity } from "@/lib/forge-api";
 
 const TAB_ICONS: Record<NexusTab, typeof Home> = {
   Overview: Home,
@@ -36,11 +36,26 @@ export function NexusShell() {
   const [tab, setTab] = useState<NexusTab>("Overview");
   const { apps, fleet, loading } = useForgeApps();
   const engineInfo = useEngineInfo();
-  const { mesh, loading: meshLoading, refresh: refreshMesh } = useMeshStatus();
+  const { mesh, loading: meshLoading, error: meshError, updatedAt: meshUpdatedAt, refresh: refreshMesh } = useMeshStatus();
+  // Found blocks join the mesh's own events, in time order, so the activity
+  // record says when a block landed among the switches around it.
+  const activity: MeshActivity[] = [
+    ...(mesh?.activity ?? []),
+    ...(mesh?.found_blocks ?? []).map((b) => ({
+      at: b.at,
+      kind: "block" as const,
+      worker: b.worker,
+      to: b.coin,
+      detail: `#${b.height.toLocaleString()}`,
+    })),
+  ].sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
   // Which miner the allocator is editing. Held by name rather than by object so
   // it survives the status poll replacing the list.
   const [selectedMiner, setSelectedMiner] = useState<string | null>(null);
   const activeMiner = (mesh?.miners ?? []).find((m) => m.worker === selectedMiner) ?? null;
+  // Selecting a miner narrows the activity panels to its history; Fleet Balance
+  // is not a miner, so selecting it leaves them showing everything.
+  const historyFor = selectedMiner && selectedMiner !== FLEET_WORKER ? selectedMiner : null;
   const { uptime: engineUptime, online: engineOnline } = useEngineStatus();
   // The header badge says what the engine is actually doing: checking until its
   // first answer, then online or offline from the 5s stats poll.
@@ -184,12 +199,14 @@ export function NexusShell() {
               refresh={refreshMesh}
               mesh={mesh}
               loading={meshLoading}
+              stale={meshError !== null && mesh !== null}
+              updatedAt={meshUpdatedAt}
               selected={selectedMiner}
               onSelect={setSelectedMiner}
             />
             <div className="flex flex-col gap-4">
-              <MeshActivityPanel apps={apps} activity={mesh?.activity ?? []} />
-              <MeshActivityPanel apps={apps} activity={mesh?.activity ?? []} fleetOnly />
+              <MeshActivityPanel apps={apps} activity={activity} worker={historyFor} />
+              <MeshActivityPanel apps={apps} activity={activity} worker={historyFor} fleetOnly />
               <MeshAllocator apps={apps} mesh={mesh} miner={activeMiner} system={selectedMiner === FLEET_WORKER} refresh={refreshMesh} />
             </div>
           </div>
