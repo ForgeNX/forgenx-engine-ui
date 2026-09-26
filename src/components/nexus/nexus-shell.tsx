@@ -12,6 +12,7 @@ import { MeshDefault } from "./mesh-default";
 import { MeshSettings } from "./mesh-settings";
 import { MeshRotation } from "./mesh-rotation";
 import { MeshAllocator } from "./mesh-allocator";
+import { MeshActivityPanel } from "./mesh-activity";
 import { EngineControls } from "./engine-controls";
 import { SettingsPanel } from "./settings-panel";
 import { StatPills } from "./stat-pills";
@@ -175,6 +176,8 @@ export function NexusShell() {
               onSelect={setSelectedMiner}
             />
             <div className="flex flex-col gap-4">
+              <MeshActivityPanel apps={apps} activity={mesh?.activity ?? []} />
+              <MeshActivityPanel apps={apps} activity={mesh?.activity ?? []} fleetOnly />
               <MeshAllocator apps={apps} mesh={mesh} miner={activeMiner} system={selectedMiner === "__system__"} refresh={refreshMesh} />
             </div>
           </div>

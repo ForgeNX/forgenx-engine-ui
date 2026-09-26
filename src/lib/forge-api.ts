@@ -659,6 +659,7 @@ export type MeshStatus = {
   system_target?: string;
   system_pins?: string[];
   overview?: MeshOverview;
+  activity?: MeshActivity[];
   miners: MeshMiner[];
 };
 
@@ -674,6 +675,7 @@ export async function fetchMeshStatus(): Promise<MeshStatus | null> {
     system_target: s.system_target ?? "",
     system_pins: s.system_pins ?? [],
     overview: s.overview,
+    activity: s.activity ?? [],
     miners: s.miners ?? [],
   };
 }
@@ -888,3 +890,14 @@ export async function rescanMiners(): Promise<boolean> {
     return false;
   }
 }
+
+// Something the mesh did, newest first. Kept in memory for the last fifty
+// events, so it clears when the engine restarts.
+export type MeshActivity = {
+  at: string;
+  kind: "switch" | "balancer" | "join" | "leave";
+  worker: string;
+  from?: string;
+  to?: string;
+  detail?: string;
+};
