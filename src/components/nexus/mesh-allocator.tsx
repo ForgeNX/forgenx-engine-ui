@@ -97,9 +97,9 @@ export function MeshAllocator({
   if (!system && !miner) {
     return (
       <section className="panel-neon animate-rise flex min-h-[200px] flex-col items-center justify-center p-5 text-center">
-        <p className="text-xs font-semibold tracking-[0.26em] text-muted-foreground uppercase">No miner selected</p>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Pick a miner, or Fleet Balance, to set how hashrate is shared across nodes.
+        <p className="text-xs font-semibold tracking-[0.26em] text-foreground uppercase">No miner selected</p>
+        <p className="mt-2 text-sm text-foreground/90">
+          Select a miner, or the Fleet Balance, to set how hashrate is shared across nodes.
         </p>
       </section>
     );
