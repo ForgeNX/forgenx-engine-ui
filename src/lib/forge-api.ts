@@ -88,10 +88,37 @@ type CoinSettings = {
   payoutAddress?: string;
 };
 
-type CoinWorker = {
-  hashrate_15m?: number;
-  hashrate?: number;
+// One worker session on one coin, as /api/apps/{coin}/workers reports it. A
+// meshed miner appears on every coin it is bonded to, with standby set on the
+// ones it is not mining. Hashrates are TH/s.
+export type CoinWorker = {
+  name: string;
   online?: boolean;
+  standby?: boolean;
+  active_coin?: string;
+  hashrate?: number;
+  hashrate_5m?: number;
+  hashrate_15m?: number;
+  difficulty?: number;
+  connected_at?: string;
+  best_session?: number;
+  best_all_time?: number;
+  network_diff_at_best?: number;
+  height_at_best?: number;
+  time_at_best?: string;
+  last_share?: string;
+  valid_shares?: number;
+  invalid_shares?: number;
+  stale_shares?: number;
+  protocol?: string;
+  shares_48h_valid?: number;
+  shares_48h_invalid?: number;
+  shares_alltime_valid?: number;
+  shares_alltime_invalid?: number;
+  payout_address?: string;
+  ip?: string;
+  device?: string;
+  last_seen?: string; // on an offline entry: when it last submitted
 };
 
 type CoinWorkers = {
@@ -267,14 +294,14 @@ export async function fetchForgeApps(): Promise<ForgeApp[]> {
         (sum, w) => sum + (w.hashrate_15m ?? 0),
         0,
       );
-      return { sym, meta, status, settings, hashrate15m };
+      return { sym, meta, status, settings, hashrate15m, workers: workers?.workers ?? [] };
     }),
   );
 
   // Total 15m hashrate across coins, for distribution percentages.
   const totalHashrate = results.reduce((sum, r) => sum + (r.hashrate15m ?? 0), 0);
 
-  const apps: ForgeApp[] = results.map(({ sym, meta, status, settings, hashrate15m }) => {
+  const apps: ForgeApp[] = results.map(({ sym, meta, status, settings, hashrate15m, workers }) => {
     const online = status?.node?.rpcOnline ?? false;
     const installed = status?.engine_connected ?? status != null;
     const poolHash = hashrate15m;
@@ -292,6 +319,9 @@ export async function fetchForgeApps(): Promise<ForgeApp[]> {
       hashrate: fmtHashrate(poolHash),
       percentage: Number(percentage.toFixed(1)),
       miners: status?.pool?.worker_count ?? 0,
+      // Kept from this same read so the Workers tab needs no second call - the
+      // endpoint records share snapshots each time it is asked.
+      workers,
       node: status
         ? mapNode(status, settings)
         : {
@@ -821,6 +851,7 @@ export type FoundMiner = {
   asic_temp: number;
   asic_temp_max: number;
   vr_temp: number;
+  uptime_s?: number; // the miner's own running time at the last sweep; 0 or absent when unknown
   pool_url: string;
   on_mesh: boolean;
   mesh_coin: string;

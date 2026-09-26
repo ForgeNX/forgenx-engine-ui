@@ -12,7 +12,7 @@ export function useForgeApps() {
   const [fleet, setFleet] = useState<FleetStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -34,12 +34,17 @@ export function useForgeApps() {
       }
     };
 
-    load();
-    timer.current = setInterval(load, POLL_MS);
+    // Each poll waits for the previous one to finish before scheduling the next,
+    // so a slow engine gets fewer requests rather than a growing queue of them.
+    const tick = async () => {
+      await load();
+      if (!cancelled) timer.current = setTimeout(tick, POLL_MS);
+    };
+    tick();
 
     return () => {
       cancelled = true;
-      if (timer.current) clearInterval(timer.current);
+      if (timer.current) clearTimeout(timer.current);
     };
   }, []);
 

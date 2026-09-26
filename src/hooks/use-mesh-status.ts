@@ -15,7 +15,7 @@ export function useMeshStatus() {
   // When the last good read arrived, so a failed poll can say how old the
   // figures on screen are.
   const [updatedAt, setUpdatedAt] = useState<number | null>(null);
-  const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cancelled = useRef(false);
 
   const load = useCallback(async () => {
@@ -40,11 +40,16 @@ export function useMeshStatus() {
 
   useEffect(() => {
     cancelled.current = false;
-    load();
-    timer.current = setInterval(load, POLL_MS);
+    // The next poll is scheduled only once this one has answered, so a slow
+    // engine is never sent a pile of overlapping requests.
+    const tick = async () => {
+      await load();
+      if (!cancelled.current) timer.current = setTimeout(tick, POLL_MS);
+    };
+    tick();
     return () => {
       cancelled.current = true;
-      if (timer.current) clearInterval(timer.current);
+      if (timer.current) clearTimeout(timer.current);
     };
   }, [load]);
 

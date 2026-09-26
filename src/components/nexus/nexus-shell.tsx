@@ -15,6 +15,7 @@ import { MeshAllocator } from "./mesh-allocator";
 import { MeshActivityPanel } from "./mesh-activity";
 import { EngineControls } from "./engine-controls";
 import { SettingsPanel } from "./settings-panel";
+import { WorkersPanel } from "./workers-panel";
 import { StatPills } from "./stat-pills";
 import { NEXUS_TABS, type NexusTab } from "./nexus-data";
 import { useForgeApps } from "@/hooks/use-forge-apps";
@@ -218,6 +219,8 @@ export function NexusShell() {
               </div>
             </div>
           </div>
+        ) : tab === "Workers" ? (
+          <WorkersPanel apps={apps} mesh={mesh} />
         ) : tab === "Settings" ? (
           <SettingsPanel coins={sv2Coins} refresh={refreshSV2} />
         ) : (

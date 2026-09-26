@@ -1,3 +1,5 @@
+import type { CoinWorker } from "@/lib/forge-api";
+
 export type ForgeAppNode = {
   syncStatus: string;
   syncNote: string;
@@ -33,6 +35,7 @@ export type ForgeApp = {
   hashrate: string;
   percentage: number;
   miners: number;
+  workers?: CoinWorker[];
   node: ForgeAppNode;
 };
 
