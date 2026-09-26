@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Lock, LockOpen } from "lucide-react";
 import { AuroraText } from "./aurora-text";
 import {
@@ -41,6 +41,11 @@ export function MeshAllocator({
   const [pinned, setPinned] = useState<Record<string, boolean>>({});
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
+  // What is being typed in a coin's number box, held until Enter or leaving
+  // the box commits it. Absent means the box shows the live percentage.
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  // Set by Escape so the blur that follows abandons the typed figure.
+  const abandonTyped = useRef(false);
 
   const locked = !system && miner?.assignment === FLEET_AUTO;
   const source = system ? mesh?.system_target ?? "" : miner?.assignment ?? "";
@@ -114,7 +119,7 @@ export function MeshAllocator({
     const { min, max } = headroom(coin);
     const next = Math.max(min, Math.min(max, Math.round(value)));
     const delta = next - (pcts[coin] ?? 0);
-    if (delta === 0) return;
+    if (delta === 0) return null;
     const others = coins.filter((c) => c !== coin && !pinned[c]);
     const pool = others.reduce((s, c) => s + (pcts[c] ?? 0), 0);
     const updated = { ...pcts, [coin]: next };
@@ -127,6 +132,32 @@ export function MeshAllocator({
       remaining -= amount;
     });
     setPcts(updated);
+    return updated;
+  };
+
+  // A typed share goes through the same rules as the slider: the unpinned nodes
+  // absorb the difference and pinned ones hold. A figure beyond the room the
+  // others can give is brought within it, and the note says why.
+  const commitTyped = async (coin: string) => {
+    const raw = abandonTyped.current ? undefined : drafts[coin];
+    abandonTyped.current = false;
+    setDrafts((d) => {
+      const { [coin]: _, ...rest } = d;
+      return rest;
+    });
+    // An emptied box is a change of mind, not a request for 0%.
+    if (raw === undefined || raw.trim() === "") return;
+    const typed = Number(raw.trim().replace(/%$/, ""));
+    if (!Number.isFinite(typed)) return;
+    const { min, max } = headroom(coin);
+    const updated = setCoin(coin, typed);
+    if (updated) await save(updated);
+    // Said after saving, so the save's own note does not replace it.
+    const pinnedOthers = coins.some((c) => c !== coin && pinned[c]);
+    if (pinnedOthers && (Math.round(typed) > max || Math.round(typed) < min)) {
+      setNote(`${coin} can be set between ${min}% and ${max}% while the other nodes are pinned`);
+      setTimeout(() => setNote(""), 6000);
+    }
   };
 
   const save = async (values?: Record<string, number>) => {
@@ -210,11 +241,29 @@ export function MeshAllocator({
                   </span>
                   <span className="block truncate text-[0.6rem] text-foreground/90">{app?.chain ?? ""}</span>
                 </span>
-                <span
-                  className="w-10 shrink-0 text-right font-mono text-sm font-semibold"
-                  style={{ color: pct > 0 ? colour : "var(--muted-foreground)" }}
-                >
-                  {pct}%
+                <span className="flex shrink-0 items-center font-mono text-sm font-semibold">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={drafts[sym] ?? String(pct)}
+                    // Pinned holds its share, so its box reads but cannot be typed in.
+                    readOnly={isPinned}
+                    disabled={busy || locked || (fixed && !isPinned)}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => setDrafts((d) => ({ ...d, [sym]: e.target.value.replace(/[^0-9]/g, "").slice(0, 3) }))}
+                    onBlur={() => commitTyped(sym)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") e.currentTarget.blur();
+                      if (e.key === "Escape") {
+                        abandonTyped.current = true;
+                        e.currentTarget.blur();
+                      }
+                    }}
+                    aria-label={`${app?.ticker ?? sym} share, percent`}
+                    className="w-10 rounded-md border border-transparent bg-transparent px-1 py-0.5 text-right transition hover:border-border focus:border-neon-cyan focus:bg-secondary/25 focus:outline-none disabled:opacity-100 read-only:hover:border-transparent"
+                    style={{ color: pct > 0 ? colour : "var(--muted-foreground)" }}
+                  />
+                  <span style={{ color: pct > 0 ? colour : "var(--muted-foreground)" }}>%</span>
                 </span>
                 <button
                   type="button"
