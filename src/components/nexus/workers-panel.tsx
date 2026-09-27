@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ChevronDown, Cpu, Search } from "lucide-react";
 import { AuroraText } from "./aurora-text";
 import { RejectionList } from "./rejection-list";
+import { ShineBorder } from "./shine-border";
 import { compactNumber, formatHashrate, timeAgo } from "./format";
 import { bestOf, buildWorkerRows, formatUptime, realTime, type HashrateView, type WorkerRow } from "./workers-data";
 import { fetchFoundMiners, fetchMeshSettings, saveMeshSettings, type FoundMiner, type MeshStatus } from "@/lib/forge-api";
@@ -518,7 +519,7 @@ function DetailPanel({ r, apps }: { r: WorkerRow | null; apps: ForgeApp[] }) {
     return (
       <aside className="panel-neon animate-rise sticky top-4 flex min-h-[200px] flex-col items-center justify-center self-start p-5 text-center">
         <p className="text-xs font-semibold tracking-[0.26em] text-foreground uppercase">No miner selected</p>
-        <p className="mt-2 text-sm text-foreground/90">Select a miner to see its detail across each coin.</p>
+        <p className="mt-2 text-sm text-foreground/90">Select a miner to see its detail across each node.</p>
       </aside>
     );
   }
@@ -651,6 +652,12 @@ export function WorkersPanel({ apps, mesh }: { apps: ForgeApp[]; mesh: MeshStatu
   return (
     <div ref={wrapRef} className="mx-auto flex w-full max-w-[118.5rem] flex-col gap-4">
       <section className="panel-neon animate-rise @container flex flex-col p-5">
+        {/* The same moving beam as the Mesh Overview on the Nexus tab. */}
+        <ShineBorder
+          borderWidth={1.5}
+          duration={14}
+          shineColor={["var(--neon-cyan)", "var(--neon-pink)", "var(--neon-gold)"]}
+        />
         <header className="flex items-center gap-3">
           <Cpu className="size-4 text-neon-cyan" />
           <h2 className="text-xs font-semibold tracking-[0.26em] text-neon-cyan uppercase">Miners</h2>
