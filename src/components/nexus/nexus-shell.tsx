@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Cpu, FileText, Home, Info, Network, Settings, Share2 } from "lucide-react";
 
 import { HashrateChart } from "./hashrate-chart";
@@ -21,6 +21,8 @@ import { NEXUS_TABS, type NexusTab } from "./nexus-data";
 import { useForgeApps } from "@/hooks/use-forge-apps";
 import { useEngineInfo, useEngineStatus, useCoinSV2List } from "@/hooks/use-engine-meta";
 import { useMeshStatus } from "@/hooks/use-mesh-status";
+import { useFoundMiners, useHashrateView } from "@/hooks/use-miners-view";
+import { buildWorkerRows } from "./workers-data";
 import { FLEET_WORKER, type MeshActivity } from "@/lib/forge-api";
 
 const TAB_ICONS: Record<NexusTab, typeof Home> = {
@@ -38,6 +40,14 @@ export function NexusShell() {
   const { apps, fleet, loading } = useForgeApps();
   const engineInfo = useEngineInfo();
   const { mesh, loading: meshLoading, error: meshError, updatedAt: meshUpdatedAt, refresh: refreshMesh } = useMeshStatus();
+  // Each miner's own readings and the Live / Avg choice, shared by the Miners
+  // tab and the Overview's Total hashrate so the two always show the same figure.
+  const found = useFoundMiners();
+  const [minersView, setMinersView] = useHashrateView();
+  const minersHashrate = useMemo(
+    () => buildWorkerRows(apps, mesh, found, minersView).summary.hashrate,
+    [apps, mesh, found, minersView],
+  );
   // Found blocks join the mesh's own events, in time order, so the activity
   // record says when a block landed among the switches around it.
   const activity: MeshActivity[] = [
@@ -171,7 +181,7 @@ export function NexusShell() {
             </div>
           ) : selected ? (
             <>
-              <StatPills apps={apps} fleet={fleet} />
+              <StatPills apps={apps} fleet={fleet} hashrateThs={minersHashrate} />
               <div className="grid gap-4 2xl:grid-cols-[minmax(0,1.05fr)_minmax(0,1.2fr)_minmax(0,1.25fr)]">
                 <NodeStatus apps={apps} selectedId={selected.id} onSelect={setSelectedId} />
                 <NodeDetail app={selected} />
@@ -223,7 +233,7 @@ export function NexusShell() {
             </div>
           </div>
         ) : tab === "Miners" ? (
-          <WorkersPanel apps={apps} mesh={mesh} />
+          <WorkersPanel apps={apps} mesh={mesh} found={found} view={minersView} onViewChange={setMinersView} />
         ) : tab === "Settings" ? (
           <SettingsPanel coins={sv2Coins} refresh={refreshSV2} />
         ) : (

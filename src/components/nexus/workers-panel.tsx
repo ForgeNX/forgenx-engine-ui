@@ -5,7 +5,7 @@ import { RejectionList } from "./rejection-list";
 import { ShineBorder } from "./shine-border";
 import { compactNumber, formatHashrate, timeAgo } from "./format";
 import { bestOf, buildWorkerRows, formatUptime, realTime, type HashrateView, type WorkerRow } from "./workers-data";
-import { fetchFoundMiners, fetchMeshSettings, saveMeshSettings, type FoundMiner, type MeshStatus } from "@/lib/forge-api";
+import { fetchMeshSettings, saveMeshSettings, type FoundMiner, type MeshStatus } from "@/lib/forge-api";
 import type { ForgeApp } from "./nexus-data";
 
 // Every miner working for this engine, one row each, across all coins. Read-only:
@@ -549,7 +549,21 @@ function DetailPanel({ r, apps }: { r: WorkerRow | null; apps: ForgeApp[] }) {
   );
 }
 
-export function WorkersPanel({ apps, mesh }: { apps: ForgeApp[]; mesh: MeshStatus | null }) {
+// The scanner's readings and the Live / Avg choice come from the shell, which
+// shares them with the Overview tab's total hashrate.
+export function WorkersPanel({
+  apps,
+  mesh,
+  found,
+  view,
+  onViewChange,
+}: {
+  apps: ForgeApp[];
+  mesh: MeshStatus | null;
+  found: FoundMiner[];
+  view: HashrateView;
+  onViewChange: (v: HashrateView) => void;
+}) {
   // Redraw each second so "last share" counts up between polls.
   const [, setTick] = useState(0);
   useEffect(() => {
@@ -557,46 +571,21 @@ export function WorkersPanel({ apps, mesh }: { apps: ForgeApp[]; mesh: MeshStatu
     return () => clearInterval(t);
   }, []);
 
-  // The scanner's readings: model, temperatures and each miner's own uptime.
-  const [found, setFound] = useState<FoundMiner[]>([]);
-  useEffect(() => {
-    let live = true;
-    const load = async () => {
-      const list = await fetchFoundMiners();
-      if (live && list) setFound(list);
-    };
-    load();
-    const t = setInterval(load, 30_000);
-    return () => {
-      live = false;
-      clearInterval(t);
-    };
-  }, []);
-
   const [filter, setFilter] = useState<Filter>("all");
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "name", dir: "asc" });
-  const [view, setView] = useState<HashrateView>("avg");
-  // The sort and the hashrate view are saved on the engine, like the Nexus tab's
-  // settings, so they hold across reloads, restarts and devices. Each is marked
-  // once the user picks, so a saved value arriving late does not undo the pick.
+  // The sort is saved on the engine, like the Nexus tab's settings, so it holds
+  // across reloads, restarts and devices. Marked once the user picks, so a saved
+  // sort arriving late does not undo the pick.
   const sortChosen = useRef(false);
-  const viewChosen = useRef(false);
   useEffect(() => {
     fetchMeshSettings().then((st) => {
       const [key, dir] = (st?.miners_sort ?? "").split(":");
       if (!sortChosen.current && SORTS.some((o) => o.key === key) && (dir === "asc" || dir === "desc")) {
         setSort({ key: key as SortKey, dir });
       }
-      if (!viewChosen.current && (st?.miners_hashrate === "live" || st?.miners_hashrate === "avg")) {
-        setView(st.miners_hashrate);
-      }
     });
   }, []);
-  const chooseView = (v: HashrateView) => {
-    viewChosen.current = true;
-    setView(v);
-    saveMeshSettings({ miners_hashrate: v });
-  };
+  const chooseView = onViewChange;
   const [query, setQuery] = useState("");
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
 

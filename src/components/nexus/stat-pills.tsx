@@ -47,9 +47,22 @@ function fmtUptime(sec: number): string {
   return `${d}d ${h}h ${m}m`;
 }
 
-export function StatPills({ apps, fleet }: { apps: ForgeApp[]; fleet: FleetStats | null }) {
+export function StatPills({
+  apps,
+  fleet,
+  hashrateThs,
+}: {
+  apps: ForgeApp[];
+  fleet: FleetStats | null;
+  // The Miners tab's Total Hashrate, in TH/s, following its Live / Avg choice.
+  // Until it has a figure, the coins' own hashrates are summed instead.
+  hashrateThs?: number;
+}) {
   const online = apps.filter((a) => a.online);
-  const totalHs = apps.reduce((sum, a) => sum + parseHashrateToHs(a.hashrate), 0);
+  const totalHs =
+    hashrateThs && hashrateThs > 0
+      ? hashrateThs * 1e12
+      : apps.reduce((sum, a) => sum + parseHashrateToHs(a.hashrate), 0);
   // fleet.totalWorkers counts distinct hardware; the per-app sum double-counts a
   // mesh worker bonded to several coins. Fall back to the sum if it is unavailable.
   const totalWorkers = fleet?.totalWorkers || apps.reduce((sum, a) => sum + a.miners, 0);
