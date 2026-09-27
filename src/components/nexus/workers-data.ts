@@ -11,7 +11,7 @@
 // live one, and names not seen for a week are left out as history.
 
 
-import type { CoinWorker, FoundMiner, MeshStatus } from "@/lib/forge-api";
+import { FLEET_AUTO, parseAllocation, type CoinWorker, type FoundMiner, type MeshStatus } from "@/lib/forge-api";
 import type { ForgeApp } from "./nexus-data";
 
 const OFFLINE_KEPT_MS = 7 * 24 * 60 * 60 * 1000;
@@ -34,6 +34,10 @@ export type WorkerRow = {
   viaMesh: boolean;
   coin: string | null; // the coin it is mining now
   coins: WorkerCoin[]; // every coin it has a session on, active first
+  // The nodes a meshed miner is allocated to: its own split or solo node, or
+  // Fleet Balance's nodes. The mesh keeps it bonded to the rest as warm
+  // fallbacks, which are not shown as its nodes. null when it has no allocation.
+  allocated: string[] | null;
   active: CoinWorker | null; // the session on the coin it is mining
   model: string;
   ip: string;
@@ -101,6 +105,19 @@ export function buildWorkerRows(
     );
     const active = coins.find((c) => live(c.worker) && !c.standby) ?? null;
     const m = meshByName.get(key);
+    const allocationOf = (a: string) =>
+      Object.entries(parseAllocation(a))
+        .filter(([, pct]) => pct > 0)
+        .map(([sym]) => sym);
+    const fleetNodes = allocationOf(mesh?.system_target ?? "");
+    const allocated =
+      m && m.assigned
+        ? m.assignment === FLEET_AUTO
+          ? fleetNodes.length > 0
+            ? fleetNodes
+            : null
+          : allocationOf(m.assignment)
+        : null;
     // The scanner's reading, matched by the name the miner mines under, else by
     // the address the mesh or a coin saw it at.
     const seenAt = m?.ip || active?.worker.ip || coins[0]?.worker.ip || "";
@@ -149,6 +166,7 @@ export function buildWorkerRows(
       viaMesh: Boolean(m),
       coin: (m?.active_coin || active?.sym || "").toUpperCase() || null,
       coins,
+      allocated: allocated && allocated.length > 0 ? allocated : null,
       active: active?.worker ?? null,
       model: m?.model || scan?.model || m?.device || active?.worker.device || "",
       ip,

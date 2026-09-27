@@ -366,6 +366,11 @@ function Detail({ r, apps }: { r: WorkerRow; apps: ForgeApp[] }) {
   const stl = w?.shares_48h_stale ?? 0;
   const rate = acc + rej + stl > 0 ? (acc / (acc + rej + stl)) * 100 : null;
   const deg = (t: number) => (t > 0 ? `${Math.round(t)}°` : "—");
+  // Only the nodes the miner is allocated to, plus wherever it is mining now in
+  // case it has failed over. The mesh's warm fallbacks are left out.
+  const nodes = r.allocated
+    ? r.coins.filter((c) => r.allocated?.includes(c.sym) || c.sym === r.coin)
+    : r.coins;
 
   return (
     <div className="flex flex-col gap-3 font-mono text-[0.7rem]">
@@ -405,9 +410,9 @@ function Detail({ r, apps }: { r: WorkerRow; apps: ForgeApp[] }) {
         </dd>
       </dl>
 
-      {r.coins.length > 0 && (
+      {nodes.length > 0 && (
         <div className="grid gap-2 @xl:grid-cols-2">
-          {r.coins.map((c) => {
+          {nodes.map((c) => {
             const app = apps.find((a) => a.id.toUpperCase() === c.sym);
             const live = c.worker.online !== false;
             const state = !live ? "offline" : c.standby ? "standby" : "mining";
@@ -465,7 +470,7 @@ function Detail({ r, apps }: { r: WorkerRow; apps: ForgeApp[] }) {
           })}
         </div>
       )}
-      {r.coins.length > 0 && (
+      {nodes.length > 0 && (
         <p className="text-[0.6rem] text-foreground/90">Shares are accepted / rejected / stale.</p>
       )}
 
