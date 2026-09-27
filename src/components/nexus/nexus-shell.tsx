@@ -44,10 +44,21 @@ export function NexusShell() {
   // tab and the Overview's Total hashrate so the two always show the same figure.
   const found = useFoundMiners();
   const [minersView, setMinersView] = useHashrateView();
-  const minersHashrate = useMemo(
-    () => buildWorkerRows(apps, mesh, found, minersView).summary.hashrate,
-    [apps, mesh, found, minersView],
-  );
+  const minerRows = useMemo(() => buildWorkerRows(apps, mesh, found, minersView), [apps, mesh, found, minersView]);
+  const minersHashrate = minerRows.summary.hashrate;
+  // Per node: the miners mining it now and their hashrate, from the same rows.
+  // A meshed miner holds a session on every node it is bonded to, but mines only
+  // one, so it is counted once, on that one.
+  const perNode = useMemo(() => {
+    const out: Record<string, { miners: number; ths: number }> = {};
+    for (const r of minerRows.rows) {
+      if (!r.online || !r.coin) continue;
+      const n = (out[r.coin] ??= { miners: 0, ths: 0 });
+      n.miners += 1;
+      n.ths += r.hashrate;
+    }
+    return out;
+  }, [minerRows]);
   // Found blocks join the mesh's own events, in time order, so the activity
   // record says when a block landed among the switches around it.
   const activity: MeshActivity[] = [
@@ -185,7 +196,7 @@ export function NexusShell() {
               <div className="grid gap-4 2xl:grid-cols-[minmax(0,1.05fr)_minmax(0,1.2fr)_minmax(0,1.25fr)]">
                 <NodeStatus apps={apps} selectedId={selected.id} onSelect={setSelectedId} />
                 <NodeDetail app={selected} />
-                <HashrateDistribution apps={apps} selectedId={selected.id} onSelect={setSelectedId} />
+                <HashrateDistribution apps={apps} perNode={perNode} selectedId={selected.id} onSelect={setSelectedId} />
               </div>
               <HashrateChart app={selected} />
             </>

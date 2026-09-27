@@ -1,6 +1,9 @@
 import { Users } from "lucide-react";
 
+import { formatHashrate } from "./format";
 import type { ForgeApp } from "./nexus-data";
+
+type NodeFigures = Record<string, { miners: number; ths: number }>;
 
 function DistributionDonut({ apps }: { apps: ForgeApp[] }) {
   const total = apps.reduce((sum, a) => sum + a.percentage, 0) || 1;
@@ -43,14 +46,27 @@ function DistributionDonut({ apps }: { apps: ForgeApp[] }) {
 }
 
 export function HashrateDistribution({
-  apps,
+  apps: coinApps,
+  perNode,
   selectedId,
   onSelect,
 }: {
   apps: ForgeApp[];
+  // Each node's miners and hashrate as the Miners tab counts them: every miner
+  // once, on the node it is mining, at its own Live / Avg figure.
+  perNode?: NodeFigures;
   selectedId: string;
   onSelect: (id: string) => void;
 }) {
+  // Until the Miners figures have a hashrate, the coins' own figures are shown.
+  const total = Object.values(perNode ?? {}).reduce((s, n) => s + n.ths, 0);
+  const apps =
+    perNode && total > 0
+      ? coinApps.map((a) => {
+          const n = perNode[a.id.toUpperCase()] ?? { miners: 0, ths: 0 };
+          return { ...a, miners: n.miners, hashrate: formatHashrate(n.ths), percentage: (n.ths / total) * 100 };
+        })
+      : coinApps;
   const max = Math.max(...apps.map((a) => a.percentage), 1);
 
   return (
@@ -71,11 +87,11 @@ export function HashrateDistribution({
             <thead>
               <tr className="text-[0.58rem] tracking-[0.16em] text-white uppercase">
                 <th className="pb-2 text-left font-semibold">Coin</th>
-                <th className="pb-2 text-right font-semibold">Miners</th>
-                <th className="pb-2 text-left font-semibold">Hashrate</th>
-                <th className="hidden pb-2 text-left font-semibold 2xl:table-cell">Distribution</th>
-                <th className="pb-2 text-right font-semibold">%</th>
-                <th className="pb-2 text-right font-semibold">Status</th>
+                <th className="pr-1 pb-2 text-right font-semibold">Miners</th>
+                <th className="pr-3 pb-2 text-left font-semibold">Hashrate</th>
+                <th className="hidden pr-3 pb-2 text-left font-semibold 2xl:table-cell">Distribution</th>
+                <th className="pr-3 pb-2 text-right font-semibold">% ratio</th>
+                <th className="pr-3 pb-2 text-right font-semibold">Status</th>
               </tr>
             </thead>
             <tbody>
