@@ -71,7 +71,7 @@ const VIEWS: { key: HashrateView; label: string; title: string }[] = [
   },
 ];
 
-function HashrateToggle({ view, onChange }: { view: HashrateView; onChange: (v: HashrateView) => void }) {
+export function HashrateToggle({ view, onChange }: { view: HashrateView; onChange: (v: HashrateView) => void }) {
   return (
     <span className="inline-flex items-center gap-1 normal-case tracking-normal" role="group" aria-label="Hashrate shown">
       {VIEWS.map((v) => {
@@ -100,7 +100,7 @@ function HashrateToggle({ view, onChange }: { view: HashrateView; onChange: (v: 
 
 // Accepted / rejected / stale, each in its colour; rejected and stale only light
 // up when there are some.
-function Ars({ a, r, s }: { a: number; r: number; s: number }) {
+export function Ars({ a, r, s }: { a: number; r: number; s: number }) {
   return (
     <>
       <span style={{ color: "var(--neon-green)" }}>{a.toLocaleString()}</span>
@@ -562,12 +562,16 @@ export function WorkersPanel({
   found,
   view,
   onViewChange,
+  focus,
 }: {
   apps: ForgeApp[];
   mesh: MeshStatus | null;
   found: FoundMiner[];
   view: HashrateView;
   onViewChange: (v: HashrateView) => void;
+  // A miner to select on arrival, from a click on the Nodes tab. n changes on
+  // each click so the same miner can be opened twice.
+  focus?: { key: string; n: number } | null;
 }) {
   // Redraw each second so "last share" counts up between polls.
   const [, setTick] = useState(0);
@@ -593,6 +597,9 @@ export function WorkersPanel({
   const chooseView = onViewChange;
   const [query, setQuery] = useState("");
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  useEffect(() => {
+    if (focus) setSelectedKey(focus.key);
+  }, [focus]);
 
   // Whether the list and the detail panel fit side by side, from the width the
   // tab actually has rather than the window's.

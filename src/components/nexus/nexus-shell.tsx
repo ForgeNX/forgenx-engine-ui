@@ -16,6 +16,7 @@ import { MeshActivityPanel } from "./mesh-activity";
 import { EngineControls } from "./engine-controls";
 import { SettingsPanel } from "./settings-panel";
 import { WorkersPanel } from "./workers-panel";
+import { NodesPanel } from "./nodes-panel";
 import { StatPills } from "./stat-pills";
 import { NEXUS_TABS, type NexusTab } from "./nexus-data";
 import { useForgeApps } from "@/hooks/use-forge-apps";
@@ -49,6 +50,12 @@ export function NexusShell() {
   // Per node: the miners mining it now and their hashrate, from the same rows.
   // A meshed miner holds a session on every node it is bonded to, but mines only
   // one, so it is counted once, on that one.
+  // A miner opened from the Nodes tab: the Miners tab selects it on arrival.
+  const [minerFocus, setMinerFocus] = useState<{ key: string; n: number } | null>(null);
+  const openMiner = (key: string) => {
+    setMinerFocus((f) => ({ key, n: (f?.n ?? 0) + 1 }));
+    setTab("Miners");
+  };
   const perNode = useMemo(() => {
     const out: Record<string, { miners: number; ths: number }> = {};
     for (const r of minerRows.rows) {
@@ -244,7 +251,22 @@ export function NexusShell() {
             </div>
           </div>
         ) : tab === "Miners" ? (
-          <WorkersPanel apps={apps} mesh={mesh} found={found} view={minersView} onViewChange={setMinersView} />
+          <WorkersPanel
+            apps={apps}
+            mesh={mesh}
+            found={found}
+            view={minersView}
+            onViewChange={setMinersView}
+            focus={minerFocus}
+          />
+        ) : tab === "Nodes" ? (
+          <NodesPanel
+            apps={apps}
+            rows={minerRows.rows}
+            view={minersView}
+            onViewChange={setMinersView}
+            onOpenMiner={openMiner}
+          />
         ) : tab === "Settings" ? (
           <SettingsPanel coins={sv2Coins} refresh={refreshSV2} />
         ) : (

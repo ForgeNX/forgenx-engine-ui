@@ -1,4 +1,4 @@
-import type { CoinWorker } from "@/lib/forge-api";
+import type { CoinStatus, CoinWorker } from "@/lib/forge-api";
 
 export type ForgeAppNode = {
   syncStatus: string;
@@ -36,6 +36,8 @@ export type ForgeApp = {
   percentage: number;
   miners: number;
   workers?: CoinWorker[];
+  coinId?: string; // the coin app's id, e.g. "forgebch"
+  status?: CoinStatus | null; // the coin's raw /status, for the Nodes tab
   node: ForgeAppNode;
 };
 

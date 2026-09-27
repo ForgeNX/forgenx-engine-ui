@@ -8,6 +8,12 @@ export default defineConfig({
   server: {
     host: "0.0.0.0",
     proxy: {
+      // forgenxd's list of installed apps (exactly /api/apps, not the engine's
+      // /api/apps/{coin}/...), for the Nodes tab's "Open in coin app" link.
+      "^/api/apps$": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
       // Engine lifecycle actions (start/stop/restart) are performed by forgenxd
       // (8000), not the engine (8080). More-specific key wins in Vite, so these
       // route to forgenxd while everything else stays on the engine. In

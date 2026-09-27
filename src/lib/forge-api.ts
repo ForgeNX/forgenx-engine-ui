@@ -48,7 +48,8 @@ export type FleetStats = {
   totalWorkers: number;
 };
 
-type CoinStatus = {
+// A coin's /status, kept on its ForgeApp for the Nodes tab.
+export type CoinStatus = {
   engine_connected: boolean;
   node: {
     status: string;
@@ -61,8 +62,12 @@ type CoinStatus = {
     chain_tip: number;
     difficulty: number;
     network_hashrate: string;
-    last_block_time: number; // unix seconds
+    last_block_time: number; // unix seconds, the chain's newest block
     peers: number;
+    peers_in?: number;
+    peers_out?: number;
+    mempool_txns?: number;
+    mempool_size_mb?: number; // MiB
   };
   pool: {
     hashrate: number; // TH/s (formatted via fmtHashrate)
@@ -72,6 +77,16 @@ type CoinStatus = {
     last_block_time: string; // RFC3339 or zero-time
     blocks_found: number;
     blocks_orphaned?: number;
+    // Lifetime counts for this coin, kept across engine restarts.
+    shares_accepted?: number;
+    shares_rejected?: number;
+    shares_stale?: number;
+    max_hashrate?: number; // TH/s, the highest pool hashrate since the engine started
+    best_ratio?: number; // closest a share came to a block this session, as a fraction
+    best_ratio_worker?: string;
+    best_all_time_diff?: number;
+    best_all_time_worker?: string;
+    last_share_time?: string; // RFC3339, or empty
   };
   stratum_port: number;
   stratum_v1_open: boolean;
@@ -328,6 +343,8 @@ export async function fetchForgeApps(): Promise<ForgeApp[]> {
       // Kept from this same read so the Workers tab needs no second call - the
       // endpoint records share snapshots each time it is asked.
       workers,
+      coinId: meta.coinId,
+      status: status ?? null,
       node: status
         ? mapNode(status, settings)
         : {
@@ -364,6 +381,16 @@ export async function fetchForgeApps(): Promise<ForgeApp[]> {
   });
 
   return apps;
+}
+
+// Where each app opens on ForgeNX, keyed by app id ("forgebch" -> its URL), from
+// forgenxd's app list. null off ForgeNX, where there is no such list.
+export async function fetchAppLinks(): Promise<Record<string, string> | null> {
+  const r = await fetchJSON<{ apps?: { id: string; url?: string; status?: string }[] }>("/api/apps");
+  if (!r?.apps) return null;
+  const out: Record<string, string> = {};
+  for (const a of r.apps) if (a.id && a.url) out[a.id] = a.url;
+  return out;
 }
 
 // fetchFleetStats: fleet-wide totals for the top StatPills row.
