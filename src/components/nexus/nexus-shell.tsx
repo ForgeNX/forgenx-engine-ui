@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FileText, Home, Info, Network, Settings, Share2, Users } from "lucide-react";
+import { Cpu, FileText, Home, Info, Network, Settings, Share2 } from "lucide-react";
 
 import { HashrateChart } from "./hashrate-chart";
 import { HashrateDistribution } from "./distribution";
@@ -25,7 +25,7 @@ import { FLEET_WORKER, type MeshActivity } from "@/lib/forge-api";
 
 const TAB_ICONS: Record<NexusTab, typeof Home> = {
   Overview: Home,
-  Workers: Users,
+  Miners: Cpu,
   Nodes: Network,
   Nexus: Share2,
   Settings: Settings,
@@ -73,7 +73,10 @@ export function NexusShell() {
   const selected = apps.find((a) => a.id === selectedId) ?? apps[0] ?? null;
 
   return (
-    <div className="panel-neon relative m-2 flex min-h-[calc(100vh-1rem)] flex-col md:m-4">
+    // overflow: clip rather than the panel's hidden, so it still clips its corners
+    // but is not a scroll container: a sticky panel inside (the Miners detail)
+    // then holds its place as the page scrolls.
+    <div className="panel-neon relative m-2 flex min-h-[calc(100vh-1rem)] flex-col md:m-4" style={{ overflow: "clip" }}>
       <span
         className="pointer-events-none absolute inset-x-0 top-0 h-px"
         style={{
@@ -219,7 +222,7 @@ export function NexusShell() {
               </div>
             </div>
           </div>
-        ) : tab === "Workers" ? (
+        ) : tab === "Miners" ? (
           <WorkersPanel apps={apps} mesh={mesh} />
         ) : tab === "Settings" ? (
           <SettingsPanel coins={sv2Coins} refresh={refreshSV2} />

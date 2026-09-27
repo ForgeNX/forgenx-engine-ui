@@ -103,6 +103,10 @@ export type CoinWorker = {
   connected_at?: string;
   best_session?: number;
   best_all_time?: number;
+  // The session best's own context; *_at_best below belong to the all-time best.
+  best_session_network_diff?: number;
+  best_session_height?: number;
+  best_session_time?: string;
   network_diff_at_best?: number;
   height_at_best?: number;
   time_at_best?: string;

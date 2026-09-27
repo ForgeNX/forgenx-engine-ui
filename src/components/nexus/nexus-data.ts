@@ -238,7 +238,7 @@ export const FORGE_APPS: ForgeApp[] = [
 
 export const NEXUS_TABS = [
   "Overview",
-  "Workers",
+  "Miners",
   "Nodes",
   "Nexus",
   "Settings",

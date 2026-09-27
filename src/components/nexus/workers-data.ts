@@ -175,9 +175,17 @@ export function bestOf(r: WorkerRow): { best: number; netDiff: number; sym: stri
   let out = { best: 0, netDiff: 0, sym: "" };
   for (const c of r.coins) {
     const b = c.worker.best_session ?? 0;
-    if (b > out.best) out = { best: b, netDiff: c.worker.network_diff_at_best ?? 0, sym: c.sym };
+    if (b > out.best) out = { best: b, netDiff: c.worker.best_session_network_diff ?? 0, sym: c.sym };
   }
   return out;
+}
+
+// A best share's recorded time, or null when there is none: the engine sends
+// Go's zero time ("0001-01-01...") for a best it has no time for.
+export function realTime(iso?: string): string | null {
+  if (!iso) return null;
+  const t = new Date(iso).getTime();
+  return Number.isFinite(t) && t > Date.UTC(2009, 0, 1) ? iso : null;
 }
 
 // "3d 4h", "5h 12m", "42m".
