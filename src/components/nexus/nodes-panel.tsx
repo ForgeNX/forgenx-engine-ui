@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { ExternalLink, Network } from "lucide-react";
 
 import { AuroraText } from "./aurora-text";
@@ -6,7 +6,7 @@ import { compactNumber, formatHashrate, timeAgo } from "./format";
 import type { ForgeApp } from "./nexus-data";
 import { Ars, HashrateToggle } from "./workers-panel";
 import type { HashrateView, WorkerRow } from "./workers-data";
-import { fetchAppLinks } from "@/lib/forge-api";
+import { fetchAppLinks, fetchMeshSettings, saveMeshSettings } from "@/lib/forge-api";
 
 // Every node the engine mines to: a list on the left, online first, and the
 // selected node's detail on the right. The detail is a read-only summary of the
@@ -21,17 +21,50 @@ import { fetchAppLinks } from "@/lib/forge-api";
 // a 1rem gap and at least 50rem of detail.
 const SIDE_BY_SIDE_PX = 81 * 16;
 
-// Per node: the miners mining it, and those holding it warm on standby.
+// How the node list and the miners on a node are sorted. Both are saved on the
+// engine, like the Miners tab's sort, so they hold across reloads, restarts and
+// devices.
+type Dir = "asc" | "desc";
+type NodeSortKey = "name" | "hashrate" | "miners" | "status";
+type MinerSortKey = "name" | "hashrate" | "best";
+type Sort<K> = { key: K; dir: Dir };
+
+const NODE_SORTS: { key: NodeSortKey; label: string; first: Dir }[] = [
+  { key: "name", label: "Name", first: "asc" },
+  { key: "hashrate", label: "Hashrate", first: "desc" },
+  { key: "miners", label: "Miners", first: "desc" },
+  { key: "status", label: "Status", first: "desc" },
+];
+const MINER_SORT_FIRST: Record<MinerSortKey, Dir> = { name: "asc", hashrate: "desc", best: "desc" };
+
+function parseSort<K extends string>(saved: string | undefined, keys: readonly K[]): Sort<K> | null {
+  const [key, dir] = (saved ?? "").split(":");
+  return keys.includes(key as K) && (dir === "asc" || dir === "desc") ? { key: key as K, dir } : null;
+}
+
+// The next sort after a click: the same key flips direction, a new key starts
+// in its natural direction.
+function nextSort<K>(cur: Sort<K>, key: K, first: Dir): Sort<K> {
+  return cur.key === key ? { key, dir: cur.dir === "asc" ? "desc" : "asc" } : { key, dir: first };
+}
+
+const byName = (a: string, b: string) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
+
+// Synced nodes rank above syncing ones, and a syncing node by how far along it is.
+function statusRank(a: ForgeApp): number {
+  if (!a.online) return -1;
+  return a.node.syncStatus.startsWith("Synced") ? 101 : a.node.syncPercent;
+}
+
+// Per node: the miners mining it, and those on standby for it - allocated to it
+// (their own split, or Fleet Balance's nodes) but mining another node right now.
+// The mesh also keeps every miner warm on nodes it is not allocated to, as a
+// failover; those are not counted.
 type NodeMiners = { mining: WorkerRow[]; standby: number; ths: number };
 
 function minersOn(sym: string, rows: WorkerRow[]): NodeMiners {
   const mining = rows.filter((r) => r.online && r.coin === sym);
-  const standby = rows.filter(
-    (r) =>
-      r.online &&
-      r.coin !== sym &&
-      r.coins.some((c) => c.sym === sym && c.standby && c.worker.online !== false),
-  ).length;
+  const standby = rows.filter((r) => r.online && r.coin !== sym && (r.allocated?.includes(sym) ?? false)).length;
   return { mining, standby, ths: mining.reduce((s, r) => s + r.hashrate, 0) };
 }
 
@@ -210,13 +243,75 @@ function Line({ label, sub, children }: { label: string; sub?: string; children:
   );
 }
 
-function Pill({ label, value, color }: { label: string; value: ReactNode; color?: string }) {
+// A Line that opens to show more beneath it, as the coin apps do.
+function DropLine({
+  label,
+  sub,
+  value,
+  details,
+}: {
+  label: string;
+  sub?: string;
+  value: ReactNode;
+  details: { label: string; value: ReactNode }[];
+}) {
+  const [open, setOpen] = useState(false);
+  const id = useId();
+  return (
+    <div className="border-b border-border/30 py-1 last:border-b-0">
+      <div className="flex items-baseline justify-between gap-3">
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          aria-controls={id}
+          className="flex items-baseline gap-1 text-left text-foreground/90 transition hover:text-foreground"
+        >
+          <span>
+            {label}
+            {sub && <span className="text-[0.58rem] text-foreground"> ({sub})</span>}:
+          </span>
+          <span
+            className="text-[0.6rem] transition-transform"
+            style={{ color: "var(--neon-green)", transform: open ? "rotate(180deg)" : undefined }}
+          >
+            ▾
+          </span>
+        </button>
+        <span className="min-w-0 truncate text-right">{value}</span>
+      </div>
+      {open && (
+        <dl id={id} className="mt-1 mb-0.5 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 pl-3 text-[0.66rem]">
+          {details.map((d) => (
+            <div key={d.label} className="contents">
+              <dt className="text-foreground/90">{d.label}:</dt>
+              <dd className="text-right">{d.value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+    </div>
+  );
+}
+
+// "6:38pm 27/09/2026", or null for a missing or zero time.
+function achievedAt(iso?: string): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (!Number.isFinite(d.getTime()) || d.getFullYear() < 2009) return null;
+  const h = d.getHours();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${h % 12 || 12}:${pad(d.getMinutes())}${h < 12 ? "am" : "pm"} ${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+}
+
+function Pill({ label, value, sub, color }: { label: string; value: ReactNode; sub?: string; color?: string }) {
   return (
     <div className="min-w-0 rounded-lg border border-border/60 px-3 py-2">
       <p className="text-[0.58rem] tracking-[0.14em] text-foreground/90 uppercase">{label}</p>
       <p className="mt-0.5 truncate font-mono text-[0.8rem] font-semibold" style={{ color: color ?? "var(--foreground)" }}>
         {value}
       </p>
+      {sub && <p className="truncate font-mono text-[0.6rem] text-foreground/90">{sub}</p>}
     </div>
   );
 }
@@ -233,12 +328,16 @@ function NodeDetail({
   view,
   link,
   onOpenMiner,
+  sort,
+  onSort,
 }: {
   app: ForgeApp;
   miners: NodeMiners;
   view: HashrateView;
   link?: string;
   onOpenMiner: (key: string) => void;
+  sort: Sort<MinerSortKey>;
+  onSort: (key: MinerSortKey) => void;
 }) {
   const sym = app.id.toUpperCase();
   const st = app.status;
@@ -259,9 +358,35 @@ function NodeDetail({
   const at = pool?.shares_stale ?? 0;
   const allTotal = aa + ar + at;
 
+  // The engine samples each node's total from the miners' own figures every 30
+  // seconds and keeps the highest; never shown below the total on screen now.
+  const peak = Math.max((view === "live" ? pool?.max_hashrate_live : pool?.max_hashrate_avg) ?? 0, miners.ths);
+
   const lag = node ? Math.max(0, (node.headers ?? 0) - (node.blocks ?? 0)) : 0;
   const difficulty = node?.difficulty ?? 0;
   const bestOn = (r: WorkerRow) => r.coins.find((c) => c.sym === sym)?.worker.best_session ?? 0;
+  const sign = sort.dir === "desc" ? -1 : 1;
+  const minerCmp: Record<MinerSortKey, (a: WorkerRow, b: WorkerRow) => number> = {
+    name: (a, b) => byName(a.name, b.name),
+    hashrate: (a, b) => a.hashrate - b.hashrate,
+    best: (a, b) => bestOn(a) - bestOn(b),
+  };
+  // Names break ties so rows keep their places between polls.
+  const sortedMiners = [...miners.mining].sort(
+    (a, b) => sign * minerCmp[sort.key](a, b) || byName(a.name, b.name),
+  );
+  const head = (key: MinerSortKey, label: ReactNode, right = false) => (
+    <button
+      type="button"
+      onClick={() => onSort(key)}
+      aria-pressed={sort.key === key}
+      className={`flex items-center gap-1 uppercase tracking-[0.12em] transition hover:text-foreground ${right ? "justify-end" : ""}`}
+      style={{ color: sort.key === key ? "var(--neon-cyan)" : undefined }}
+    >
+      {label}
+      {sort.key === key && <span>{sort.dir === "asc" ? "↑" : "↓"}</span>}
+    </button>
+  );
 
   return (
     <div className="flex flex-col gap-3 font-mono text-[0.72rem]">
@@ -276,19 +401,46 @@ function NodeDetail({
           <Line label="Total hashrate" sub={view === "live" ? "live" : "avg"}>
             <span className="text-neon-cyan">{miners.ths > 0 ? formatHashrate(miners.ths) : "—"}</span>
           </Line>
-          <Line label="Max session hashrate">
-            {(pool?.max_hashrate ?? 0) > 0 ? formatHashrate(pool?.max_hashrate ?? 0) : "—"}
+          <Line label="Max session hashrate" sub={view === "live" ? "live" : "avg"}>
+            {peak > 0 ? formatHashrate(peak) : "—"}
           </Line>
-          <Line label="Closest to block" sub="session">
-            <span className="text-neon-cyan">{ratioPct(pool?.best_ratio)}</span>
-            <By name={pool?.best_ratio_worker ? pool.best_ratio_worker.split(".").pop() : undefined} />
-          </Line>
-          <Line label="Best share difficulty" sub="session">
-            <span className="text-neon-cyan">
-              {(pool?.best_session_diff ?? 0) > 0 ? compactNumber(pool?.best_session_diff ?? 0) : "—"}
-            </span>
-            <By name={pool?.best_session_worker ? pool.best_session_worker.split(".").pop() : undefined} />
-          </Line>
+          <DropLine
+            label="Closest to block"
+            sub="session"
+            value={
+              <>
+                <span className="text-neon-cyan">{ratioPct(pool?.best_ratio)}</span>
+                <By name={pool?.best_ratio_worker ? pool.best_ratio_worker.split(".").pop() : undefined} />
+              </>
+            }
+            details={[
+              {
+                label: "Share difficulty",
+                value: (pool?.best_ratio_share_diff ?? 0) > 0 ? compactNumber(pool?.best_ratio_share_diff ?? 0) : "—",
+              },
+              {
+                label: "Network difficulty",
+                value: (pool?.best_ratio_net_diff ?? 0) > 0 ? compactNumber(pool?.best_ratio_net_diff ?? 0) : "—",
+              },
+              {
+                label: "Block height",
+                value: (pool?.best_ratio_height ?? 0) > 0 ? (pool?.best_ratio_height ?? 0).toLocaleString() : "—",
+              },
+            ]}
+          />
+          <DropLine
+            label="Best share difficulty"
+            sub="session"
+            value={
+              <>
+                <span className="text-neon-cyan">
+                  {(pool?.best_session_diff ?? 0) > 0 ? compactNumber(pool?.best_session_diff ?? 0) : "—"}
+                </span>
+                <By name={pool?.best_session_worker ? pool.best_session_worker.split(".").pop() : undefined} />
+              </>
+            }
+            details={[{ label: "Achieved", value: achievedAt(pool?.best_session_time) ?? "—" }]}
+          />
           <Line label="Network difficulty">{difficulty > 0 ? compactNumber(difficulty) : "—"}</Line>
           <Line label="Last share">{agoSeconds(pool?.last_share_time)}</Line>
           <Line label="Total shares" sub="session">
@@ -297,45 +449,6 @@ function NodeDetail({
           <Line label="Valid shares" sub="session">
             <span style={{ color: "var(--neon-green)" }}>{sessionTotal > 0 ? pct((sa / sessionTotal) * 100) : "—"}</span>
           </Line>
-        </Section>
-
-        <Section title="Miners on this node">
-          {miners.mining.length === 0 ? (
-            <p className="py-2 text-foreground/90">
-              {online ? "No miners are mining this node right now." : "The node is offline."}
-            </p>
-          ) : (
-            <>
-              <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)] gap-x-3 pb-1 text-[0.58rem] tracking-[0.12em] text-foreground/90 uppercase">
-                <span>Miner</span>
-                <span className="text-right">Hashrate</span>
-                <span className="text-right">
-                  Best share <span className="text-[0.5rem] text-foreground">(session)</span>
-                </span>
-              </div>
-              <div className="flex flex-col">
-                {[...miners.mining]
-                  .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" }))
-                  .map((r) => (
-                    <button
-                      key={r.key}
-                      type="button"
-                      onClick={() => onOpenMiner(r.key)}
-                      title={`Open ${r.name} on the Miners tab`}
-                      className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)] items-center gap-x-3 rounded-md border-b border-border/30 px-1 py-1 text-left transition last:border-b-0 hover:bg-secondary/40"
-                    >
-                      <span className="flex min-w-0 items-center gap-2">
-                        <span className="size-1.5 shrink-0 rounded-full" style={{ background: "var(--neon-green)", boxShadow: "0 0 6px var(--neon-green)" }} />
-                        <span className="truncate font-semibold">{r.name}</span>
-                        {r.viaMesh && <span className="text-[0.55rem] text-neon-cyan">Mesh</span>}
-                      </span>
-                      <span className="text-right text-neon-cyan">{r.hashrate > 0 ? formatHashrate(r.hashrate) : "—"}</span>
-                      <span className="text-right text-neon-cyan">{bestOn(r) > 0 ? compactNumber(bestOn(r)) : "—"}</span>
-                    </button>
-                  ))}
-              </div>
-            </>
-          )}
         </Section>
 
         <Section title="All time node stats">
@@ -359,33 +472,85 @@ function NodeDetail({
             <span style={{ color: at > 0 ? "var(--neon-gold)" : undefined }}>{at.toLocaleString()}</span>
           </Line>
         </Section>
-
-        <Section title="Network">
-          <div className="grid grid-cols-2 gap-2 @xl:grid-cols-3 @4xl:grid-cols-2">
-            <Pill label="Network difficulty" value={difficulty > 0 ? compactNumber(difficulty) : "—"} color="var(--neon-green)" />
-            <Pill label="Network hashrate" value={node?.network_hashrate || "—"} color="var(--neon-green)" />
-            <Pill label="Est. time to block" value={timeToBlock(difficulty, miners.ths)} />
-            <Pill
-              label="Chain lag"
-              value={!online ? "—" : lag === 0 ? "In sync" : `${lag.toLocaleString()} block${lag === 1 ? "" : "s"}`}
-              color={online && lag > 0 ? "var(--neon-gold)" : undefined}
-            />
-            <Pill label="Last block" value={node?.last_block_time ? timeAgo(node.last_block_time * 1000) : "—"} />
-            <Pill
-              label="Mempool"
-              value={
-                node?.mempool_size_mb !== undefined
-                  ? `${node.mempool_size_mb.toFixed(2)} MiB · ${(node.mempool_txns ?? 0).toLocaleString()} tx`
-                  : "—"
-              }
-            />
-            <Pill
-              label="Connections"
-              value={node?.peers_in !== undefined ? `${node.peers_in} in / ${node.peers_out ?? 0} out` : "—"}
-            />
-          </div>
-        </Section>
       </div>
+
+      {/* Full width, with room for more columns later. */}
+      <Section title="Miners on this node">
+        {miners.mining.length === 0 ? (
+          <p className="py-2 text-foreground/90">
+            {online ? "No miners are mining this node right now." : "The node is offline."}
+          </p>
+        ) : (
+          <>
+            <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)] gap-x-3 pb-1 text-[0.58rem] tracking-[0.12em] text-foreground/90 uppercase">
+              {head("name", "Miner")}
+              {head("hashrate", "Hashrate", true)}
+              {head(
+                "best",
+                <>
+                  Best share <span className="text-[0.5rem] text-foreground normal-case">(session)</span>
+                </>,
+                true,
+              )}
+            </div>
+            <div className="flex flex-col">
+              {sortedMiners
+                .map((r) => (
+                  <button
+                    key={r.key}
+                    type="button"
+                    onClick={() => onOpenMiner(r.key)}
+                    title={`Open ${r.name} on the Miners tab`}
+                    className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)] items-center gap-x-3 rounded-md border-b border-border/30 px-1 py-1 text-left transition last:border-b-0 hover:bg-secondary/40"
+                  >
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span className="size-1.5 shrink-0 rounded-full" style={{ background: "var(--neon-green)", boxShadow: "0 0 6px var(--neon-green)" }} />
+                      <span className="truncate font-semibold">{r.name}</span>
+                      {r.viaMesh && <span className="text-[0.55rem] text-neon-cyan">Mesh</span>}
+                    </span>
+                    <span className="text-right text-neon-cyan">{r.hashrate > 0 ? formatHashrate(r.hashrate) : "—"}</span>
+                    <span className="text-right text-neon-cyan">{bestOn(r) > 0 ? compactNumber(bestOn(r)) : "—"}</span>
+                  </button>
+                ))}
+            </div>
+          </>
+        )}
+      </Section>
+
+      <Section title="Network">
+        <div className="grid grid-cols-2 gap-2 @xl:grid-cols-4 @6xl:grid-cols-7">
+          <Pill label="Network difficulty" value={difficulty > 0 ? compactNumber(difficulty) : "—"} color="var(--neon-green)" />
+          <Pill label="Network hashrate" value={node?.network_hashrate || "—"} color="var(--neon-green)" />
+          <Pill label="Est. time to block" value={timeToBlock(difficulty, miners.ths)} />
+          <Pill
+            label="Chain lag"
+            value={!online ? "—" : lag === 0 ? "In sync" : `${lag.toLocaleString()} block${lag === 1 ? "" : "s"}`}
+            color={online && lag > 0 ? "var(--neon-gold)" : undefined}
+          />
+          <Pill label="Last block" value={node?.last_block_time ? timeAgo(node.last_block_time * 1000) : "—"} />
+          <Pill
+            label="Mempool"
+            value={
+              node?.mempool_size_mb !== undefined ? (
+                <>
+                  {node.mempool_size_mb.toFixed(2)} MiB
+                  {node.mempool_txns !== undefined && (
+                    <span className="text-[0.62rem] font-normal text-foreground/90">
+                      {" "}({node.mempool_txns.toLocaleString()} tx)
+                    </span>
+                  )}
+                </>
+              ) : (
+                "—"
+              )
+            }
+          />
+          <Pill
+            label="Connections"
+            value={node?.peers_in !== undefined ? `${node.peers_in} in / ${node.peers_out ?? 0} out` : "—"}
+          />
+        </div>
+      </Section>
 
       {link && (
         <p className="text-[0.62rem] text-foreground/90">
@@ -471,8 +636,45 @@ export function NodesPanel({
     return () => ro.disconnect();
   }, []);
 
-  const online = apps.filter((a) => a.online);
-  const offline = apps.filter((a) => !a.online);
+  const [nodesSort, setNodesSort] = useState<Sort<NodeSortKey>>({ key: "name", dir: "asc" });
+  const [minersSort, setMinersSort] = useState<Sort<MinerSortKey>>({ key: "name", dir: "asc" });
+  // Marked once the user picks, so a saved sort arriving late does not undo it.
+  const nodesChosen = useRef(false);
+  const minersChosen = useRef(false);
+  useEffect(() => {
+    fetchMeshSettings().then((st) => {
+      const n = parseSort(st?.nodes_sort, ["name", "hashrate", "miners", "status"] as const);
+      if (n && !nodesChosen.current) setNodesSort(n);
+      const m = parseSort(st?.node_miners_sort, ["name", "hashrate", "best"] as const);
+      if (m && !minersChosen.current) setMinersSort(m);
+    });
+  }, []);
+  const chooseNodes = (key: NodeSortKey, first: Dir) => {
+    const next = nextSort(nodesSort, key, first);
+    nodesChosen.current = true;
+    setNodesSort(next);
+    saveMeshSettings({ nodes_sort: `${next.key}:${next.dir}` });
+  };
+  const chooseMiners = (key: MinerSortKey) => {
+    const next = nextSort(minersSort, key, MINER_SORT_FIRST[key]);
+    minersChosen.current = true;
+    setMinersSort(next);
+    saveMeshSettings({ node_miners_sort: `${next.key}:${next.dir}` });
+  };
+
+  const figures = (a: ForgeApp) => minersOn(a.id.toUpperCase(), rows);
+  const nodeSign = nodesSort.dir === "desc" ? -1 : 1;
+  const nodeCmp: Record<NodeSortKey, (a: ForgeApp, b: ForgeApp) => number> = {
+    name: (a, b) => byName(a.ticker, b.ticker),
+    hashrate: (a, b) => figures(a).ths - figures(b).ths,
+    miners: (a, b) => figures(a).mining.length - figures(b).mining.length,
+    status: (a, b) => statusRank(a) - statusRank(b),
+  };
+  // Offline nodes stay in their own group at the bottom, whatever the sort.
+  const sortNodes = (list: ForgeApp[]) =>
+    [...list].sort((a, b) => nodeSign * nodeCmp[nodesSort.key](a, b) || byName(a.ticker, b.ticker));
+  const online = sortNodes(apps.filter((a) => a.online));
+  const offline = sortNodes(apps.filter((a) => !a.online));
   const ordered = [...online, ...offline];
 
   // The first online node is shown until the user picks one. Stacked, a node's
@@ -482,7 +684,6 @@ export function NodesPanel({
   const selected = ordered.find((a) => a.id === selectedId) ?? null;
   const pick = (id: string) => setPicked((p) => (!wide && p === id ? "" : id));
 
-  const figures = (a: ForgeApp) => minersOn(a.id.toUpperCase(), rows);
   const linkFor = (a: ForgeApp) => (a.coinId ? links[a.coinId] : undefined);
 
   const card = (a: ForgeApp) => (
@@ -504,7 +705,15 @@ export function NodesPanel({
               </a>
             )}
           </div>
-          <NodeDetail app={a} miners={figures(a)} view={view} link={linkFor(a)} onOpenMiner={onOpenMiner} />
+          <NodeDetail
+            app={a}
+            miners={figures(a)}
+            view={view}
+            link={linkFor(a)}
+            onOpenMiner={onOpenMiner}
+            sort={minersSort}
+            onSort={chooseMiners}
+          />
         </div>
       )}
     </NodeCard>
@@ -522,6 +731,29 @@ export function NodesPanel({
               <HashrateToggle view={view} onChange={onViewChange} />
             </span>
           </header>
+
+          <div className="mt-3 flex flex-wrap items-center gap-1.5">
+            <span className="mr-1 text-[0.6rem] font-semibold tracking-[0.18em] text-foreground/90 uppercase">Sort</span>
+            {NODE_SORTS.map((o) => {
+              const on = nodesSort.key === o.key;
+              return (
+                <button
+                  key={o.key}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => chooseNodes(o.key, o.first)}
+                  className="rounded-md border px-2 py-0.5 text-[0.65rem] font-semibold transition"
+                  style={{
+                    borderColor: on ? "var(--neon-cyan)" : "var(--border)",
+                    color: on ? "var(--neon-cyan)" : "var(--foreground)",
+                  }}
+                >
+                  {o.label}
+                  {on && (nodesSort.dir === "asc" ? " ↑" : " ↓")}
+                </button>
+              );
+            })}
+          </div>
 
           {apps.length === 0 ? (
             <p className="py-6 text-sm text-foreground/90">No nodes are installed yet.</p>
@@ -550,6 +782,8 @@ export function NodesPanel({
                   view={view}
                   link={linkFor(selected)}
                   onOpenMiner={onOpenMiner}
+                  sort={minersSort}
+                  onSort={chooseMiners}
                 />
               </div>
             </section>

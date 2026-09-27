@@ -82,8 +82,18 @@ export type CoinStatus = {
     shares_rejected?: number;
     shares_stale?: number;
     max_hashrate?: number; // TH/s, the highest pool hashrate since the engine started
+    // TH/s, the node's highest total since the engine started from the miners'
+    // own figures (as the Miners tab counts them), live and averaged.
+    max_hashrate_live?: number;
+    max_hashrate_avg?: number;
     best_ratio?: number; // closest a share came to a block this session, as a fraction
     best_ratio_worker?: string;
+    // The closest share's own context: its difficulty, the network difficulty
+    // it was measured against, and the height it was found at.
+    best_ratio_share_diff?: number;
+    best_ratio_net_diff?: number;
+    best_ratio_height?: number;
+    best_session_time?: string; // RFC3339, when this session's best share was found
     best_all_time_diff?: number;
     best_all_time_worker?: string;
     last_share_time?: string; // RFC3339, or empty
@@ -658,6 +668,8 @@ export type MeshSettings = {
   discovered_sort: string;
   miners_sort?: string; // the Miners tab's sort, e.g. "hashrate:desc"
   miners_hashrate?: "live" | "avg"; // which of each miner's own figures the Miners tab shows
+  nodes_sort?: string; // the Nodes tab's node list sort, e.g. "hashrate:desc"
+  node_miners_sort?: string; // the sort of the miners on the selected node
   auto_name: boolean;
   name_prefix: string;
   next_name: string; // the name the next miner added to the mesh would be given
@@ -672,7 +684,7 @@ export async function fetchMeshSettings(): Promise<MeshSettings | null> {
 // Saves whichever settings are given. The engine validates the range and
 // answers with the reason when it rejects one, which is passed back as error.
 export async function saveMeshSettings(
-  patch: Partial<Pick<MeshSettings, "network_start" | "network_end" | "include_new" | "miner_sort" | "discovered_sort" | "miners_sort" | "miners_hashrate" | "auto_name" | "name_prefix" | "mesh_address">>,
+  patch: Partial<Pick<MeshSettings, "network_start" | "network_end" | "include_new" | "miner_sort" | "discovered_sort" | "miners_sort" | "miners_hashrate" | "nodes_sort" | "node_miners_sort" | "auto_name" | "name_prefix" | "mesh_address">>,
 ): Promise<{ ok: boolean; settings?: MeshSettings; error?: string }> {
   try {
     const res = await fetch("/api/mesh/settings", {
