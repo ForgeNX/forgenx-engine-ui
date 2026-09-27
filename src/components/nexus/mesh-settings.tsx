@@ -483,7 +483,7 @@ export function MeshSettings() {
                 )}
               </div>
               <p className="mt-2 text-[0.68rem] leading-relaxed text-foreground">
-                <span style={{ color: "#e0115f" }}>⚠ Warning:</span> A miner added to the mesh will be
+                <span style={{ color: "#ff0080" }}>⚠ Warning:</span> A miner added to the mesh will be
                 renamed to the next available name in the sequence, replacing the name it currently uses.
               </p>
             </>

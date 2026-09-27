@@ -177,7 +177,7 @@ export function MinerPill({
               </span>
             </>
           ) : (
-            <span className="mt-0.5 flex items-center gap-1.5 font-mono text-[0.7rem] font-semibold" style={{ color: "#e0115f" }}>
+            <span className="mt-0.5 flex items-center gap-1.5 font-mono text-[0.7rem] font-semibold" style={{ color: "#ff0080" }}>
               <Unplug className="size-3.5" />
               Device offline
               {miner.last_seen && awayFor(miner.last_seen) && (

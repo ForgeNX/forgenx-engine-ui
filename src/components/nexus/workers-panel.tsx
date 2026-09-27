@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ChevronDown, Cpu, Search } from "lucide-react";
 import { AuroraText } from "./aurora-text";
 import { RejectionList } from "./rejection-list";
 import { compactNumber, formatHashrate, timeAgo } from "./format";
-import { bestOf, buildWorkerRows, formatUptime, realTime, type WorkerRow } from "./workers-data";
-import { fetchFoundMiners, type FoundMiner, type MeshStatus } from "@/lib/forge-api";
+import { bestOf, buildWorkerRows, formatUptime, realTime, type HashrateView, type WorkerRow } from "./workers-data";
+import { fetchFoundMiners, fetchMeshSettings, saveMeshSettings, type FoundMiner, type MeshStatus } from "@/lib/forge-api";
 import type { ForgeApp } from "./nexus-data";
 
 // Every miner working for this engine, one row each, across all coins. Read-only:
@@ -38,12 +38,78 @@ const SORTS: { key: SortKey; label: string; first: "asc" | "desc" }[] = [
   { key: "last", label: "Last share", first: "desc" },
 ];
 
-const SOURCE_COLOUR: Record<string, string> = {
-  miner: "var(--neon-green)",
-  mesh: "var(--neon-cyan)",
-  coin: "var(--neon-gold)",
-  scanner: "var(--neon-green)",
+// Where a miner's hashrate figure came from, worded and coloured as on the Nexus
+// tab: its own reading is exact, the relay's is inferred from shares, and a
+// node's average is the least precise.
+const SOURCE: Record<string, { text: string; color: string }> = {
+  miner: { text: "from miner", color: "var(--neon-green)" },
+  scanner: { text: "from miner", color: "var(--neon-green)" },
+  mesh: { text: "at relay", color: "var(--neon-cyan)" },
+  coin: { text: "node avg", color: "var(--neon-gold)" },
 };
+
+// The window a miner's own figure covers, as it reads under the hashrate.
+function windowText(w: string): string {
+  if (w === "now") return "now";
+  if (w === "av") return "since boot";
+  return w;
+}
+
+// Live or average: which of each miner's own figures the list and the total
+// show. The windows are the miner's own, so they differ by firmware.
+const VIEWS: { key: HashrateView; label: string; title: string }[] = [
+  {
+    key: "live",
+    label: "Live",
+    title: "Each miner's most recent figure: 1 minute on AxeOS and most ASICs, instantaneous where that is all the miner gives",
+  },
+  {
+    key: "avg",
+    label: "Avg",
+    title: "Each miner's longer average: 10 minutes on AxeOS, 15 minutes on most ASICs",
+  },
+];
+
+function HashrateToggle({ view, onChange }: { view: HashrateView; onChange: (v: HashrateView) => void }) {
+  return (
+    <span className="inline-flex items-center gap-1 normal-case tracking-normal" role="group" aria-label="Hashrate shown">
+      {VIEWS.map((v) => {
+        const on = view === v.key;
+        return (
+          <button
+            key={v.key}
+            type="button"
+            aria-pressed={on}
+            title={v.title}
+            onClick={() => onChange(v.key)}
+            className="rounded border px-1.5 py-px text-[0.6rem] font-semibold transition"
+            style={{
+              borderColor: on ? "var(--neon-cyan)" : "var(--border)",
+              color: on ? "var(--neon-cyan)" : "var(--foreground)",
+              background: on ? "color-mix(in oklab, var(--neon-cyan) 12%, transparent)" : undefined,
+            }}
+          >
+            {v.label}
+          </button>
+        );
+      })}
+    </span>
+  );
+}
+
+// Accepted / rejected / stale, each in its colour; rejected and stale only light
+// up when there are some.
+function Ars({ a, r, s }: { a: number; r: number; s: number }) {
+  return (
+    <>
+      <span style={{ color: "var(--neon-green)" }}>{a.toLocaleString()}</span>
+      <span className="text-foreground/50"> / </span>
+      <span style={{ color: r > 0 ? "#ff0080" : "var(--foreground)" }}>{r.toLocaleString()}</span>
+      <span className="text-foreground/50"> / </span>
+      <span style={{ color: s > 0 ? "var(--neon-gold)" : "var(--foreground)" }}>{s.toLocaleString()}</span>
+    </>
+  );
+}
 
 // Last share, to the second while it is recent: "12s ago", "4m 12s ago", then
 // the coarser "2h ago". Miners submit every few seconds, so "just now" hid the
@@ -85,9 +151,9 @@ function ofNetwork(best: number, netDiff: number): string {
   return pct >= 1 ? `${pct.toFixed(1)}%` : `${pct.toPrecision(2)}%`;
 }
 
-function Stat({ label, value, sub, color }: { label: string; value: string; sub?: string; color?: string }) {
+function Stat({ label, value, sub, color }: { label: string; value: ReactNode; sub?: string; color?: string }) {
   return (
-    <div className="flex min-w-0 flex-col items-center rounded-lg border border-border/50 px-3 py-2 text-center">
+    <div className="flex min-w-0 flex-col items-center justify-center rounded-lg border border-border/50 px-3 py-2 text-center">
       <span className="text-[0.6rem] tracking-[0.14em] text-foreground/90 uppercase">{label}</span>
       <span className="font-mono text-sm font-semibold" style={{ color: color ?? "var(--foreground)" }}>
         {value}
@@ -101,7 +167,7 @@ function Stat({ label, value, sub, color }: { label: string; value: string; sub?
 // enough; narrower, each row lays its figures out in labelled pairs instead.
 // Miner, Node, Hashrate, Difficulty, Best share, Shares, Last share, Uptime.
 const COLS =
-  "@4xl:grid-cols-[minmax(10rem,1.5fr)_minmax(6.5rem,1fr)_minmax(5.5rem,0.8fr)_minmax(4.5rem,0.7fr)_minmax(7.5rem,1.1fr)_minmax(6.5rem,1fr)_minmax(5rem,0.8fr)_minmax(4rem,0.6fr)]";
+  "@4xl:grid-cols-[minmax(10rem,1.5fr)_minmax(6.5rem,1fr)_minmax(5.5rem,1fr)_minmax(4.5rem,0.7fr)_minmax(7.5rem,1.1fr)_minmax(6.5rem,1fr)_minmax(5rem,0.8fr)_minmax(4rem,0.6fr)]";
 
 function Label({ children }: { children: string }) {
   return <span className="mr-1.5 text-[0.6rem] tracking-[0.12em] text-foreground/90 uppercase @4xl:hidden">{children}</span>;
@@ -161,8 +227,8 @@ function Row({
           <span
             className="size-1.5 shrink-0 rounded-full"
             style={{
-              background: r.online ? "var(--neon-green)" : "#e0115f",
-              boxShadow: r.online ? "0 0 6px var(--neon-green)" : undefined,
+              background: r.online ? "var(--neon-green)" : "#ff0080",
+              boxShadow: r.online ? "0 0 6px var(--neon-green)" : "0 0 6px #ff0080",
             }}
           />
           <span className="min-w-0">
@@ -201,7 +267,15 @@ function Row({
         <span>
           <Label>Hashrate</Label>
           {r.online ? (
-            <span style={{ color: SOURCE_COLOUR[r.hashrateSource] ?? "var(--neon-cyan)" }}>{formatHashrate(r.hashrate)}</span>
+            <>
+              <span style={{ color: SOURCE[r.hashrateSource]?.color ?? "var(--neon-cyan)" }}>{formatHashrate(r.hashrate)}</span>
+              {SOURCE[r.hashrateSource] && (
+                <span className="block text-[0.62rem] text-foreground">
+                  ({SOURCE[r.hashrateSource].text}
+                  {r.hashrateWindow && ` · ${windowText(r.hashrateWindow)}`})
+                </span>
+              )}
+            </>
           ) : (
             <span className="text-foreground/90">—</span>
           )}
@@ -252,7 +326,7 @@ function Row({
           {r.online ? (
             w?.last_share ? lastShareAgo(w.last_share) : "—"
           ) : (
-            <span style={{ color: "#e0115f" }}>{r.lastSeen ? `offline, seen ${timeAgo(r.lastSeen)}` : "offline"}</span>
+            <span style={{ color: "#ff0080" }}>{r.lastSeen ? `offline, seen ${timeAgo(r.lastSeen)}` : "offline"}</span>
           )}
         </span>
 
@@ -288,28 +362,41 @@ function Detail({ r, apps }: { r: WorkerRow; apps: ForgeApp[] }) {
   const n = (v?: number) => (v ?? 0).toLocaleString();
   const acc = w?.shares_48h_valid ?? 0;
   const rej = w?.shares_48h_invalid ?? 0;
-  const rate = acc + rej > 0 ? (acc / (acc + rej)) * 100 : null;
+  const stl = w?.shares_48h_stale ?? 0;
+  const rate = acc + rej + stl > 0 ? (acc / (acc + rej + stl)) * 100 : null;
   const deg = (t: number) => (t > 0 ? `${Math.round(t)}°` : "—");
 
   return (
     <div className="flex flex-col gap-3 font-mono text-[0.7rem]">
       <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
-        <dt className="text-foreground/90">ASIC temp</dt>
+        <dt className="text-foreground/90">ASIC temp:</dt>
         <dd>
           {deg(r.asicTemp)}
           {r.asicTempMax > 0 && <span className="text-foreground/90"> / {deg(r.asicTempMax)} hottest chip</span>}
         </dd>
-        <dt className="text-foreground/90">VR temp</dt>
-        <dd>{deg(r.vrTemp)}</dd>
-        <dt className="text-foreground/90">Accepted 48h</dt>
+        {/* A miner with no VR sensor but a board reading (Braiins OS) shows that
+            instead, under its own name. */}
+        {r.vrTemp <= 0 && r.boardTemp > 0 ? (
+          <>
+            <dt className="text-foreground/90">Board temp:</dt>
+            <dd>{deg(r.boardTemp)}</dd>
+          </>
+        ) : (
+          <>
+            <dt className="text-foreground/90">VR temp:</dt>
+            <dd>{deg(r.vrTemp)}</dd>
+          </>
+        )}
+        <dt className="text-foreground/90">
+          Shares Accepted <span className="text-[0.55rem] text-foreground">(48h)</span>:
+        </dt>
         <dd>
           {rate !== null ? (
             <>
-              {rate >= 99.95 ? "100" : rate.toFixed(1)}%
-              <span className="text-foreground/90">
-                {" "}
-                ({n(acc)} / {n(rej)})
-              </span>
+              {rate >= 99.95 ? "100" : rate.toFixed(1)}%{" "}
+              <span className="text-foreground/90">(</span>
+              <Ars a={acc} r={rej} s={stl} />
+              <span className="text-foreground/90">)</span>
             </>
           ) : (
             "—"
@@ -331,13 +418,19 @@ function Detail({ r, apps }: { r: WorkerRow; apps: ForgeApp[] }) {
                   </span>
                   <span
                     className="text-[0.62rem]"
-                    style={{ color: state === "mining" ? "var(--neon-green)" : state === "offline" ? "#e0115f" : "var(--foreground)" }}
+                    style={{ color: state === "mining" ? "var(--neon-green)" : state === "offline" ? "#ff0080" : "var(--foreground)" }}
                   >
                     {state}
                   </span>
                 </div>
                 <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
-                  <dt className="text-foreground/90">Session</dt>
+                  <dt className="text-foreground/90">Best Share (session):</dt>
+                  <dd className="text-neon-cyan">
+                    {(c.worker.best_session ?? 0) > 0 ? compactNumber(c.worker.best_session ?? 0) : "—"}
+                  </dd>
+                  {/* The share counts sit under their own heading, indented. */}
+                  <dt className="col-span-2 mt-1 text-foreground/90">Shares</dt>
+                  <dt className="pl-3 text-foreground/90">Session:</dt>
                   <dd>
                     <span style={{ color: "var(--neon-green)" }}>{n(c.worker.valid_shares)}</span>
                     {" / "}
@@ -349,17 +442,21 @@ function Detail({ r, apps }: { r: WorkerRow; apps: ForgeApp[] }) {
                       {n(c.worker.stale_shares)}
                     </span>
                   </dd>
-                  <dt className="text-foreground/90">48h</dt>
+                  <dt className="pl-3 text-foreground/90">48h:</dt>
                   <dd>
-                    {n(c.worker.shares_48h_valid)} / {n(c.worker.shares_48h_invalid)}
+                    <Ars
+                      a={c.worker.shares_48h_valid ?? 0}
+                      r={c.worker.shares_48h_invalid ?? 0}
+                      s={c.worker.shares_48h_stale ?? 0}
+                    />
                   </dd>
-                  <dt className="text-foreground/90">All time</dt>
+                  <dt className="pl-3 text-foreground/90">All time:</dt>
                   <dd>
-                    {n(c.worker.shares_alltime_valid)} / {n(c.worker.shares_alltime_invalid)}
-                  </dd>
-                  <dt className="text-foreground/90">Best</dt>
-                  <dd className="text-neon-cyan">
-                    {(c.worker.best_session ?? 0) > 0 ? compactNumber(c.worker.best_session ?? 0) : "—"}
+                    <Ars
+                      a={c.worker.shares_alltime_valid ?? 0}
+                      r={c.worker.shares_alltime_invalid ?? 0}
+                      s={c.worker.shares_alltime_stale ?? 0}
+                    />
                   </dd>
                 </dl>
               </div>
@@ -374,7 +471,7 @@ function Detail({ r, apps }: { r: WorkerRow; apps: ForgeApp[] }) {
       <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
         {best.best > 0 && bestSession && (
           <>
-            <dt className="text-foreground/90">Best this session</dt>
+            <dt className="text-foreground/90">Best this session:</dt>
             <dd>
               <span className="text-neon-cyan">{compactNumber(best.best)}</span>
               {bestSession.best_session_height ? ` at height ${bestSession.best_session_height.toLocaleString()}` : ""}
@@ -384,7 +481,7 @@ function Detail({ r, apps }: { r: WorkerRow; apps: ForgeApp[] }) {
         )}
         {allTime > 0 && allTimeOn && (
           <>
-            <dt className="text-foreground/90">Best all time</dt>
+            <dt className="text-foreground/90">Best all time:</dt>
             <dd>
               <span className="text-neon-cyan">{compactNumber(allTime)}</span>
               {allTimeOn.worker.height_at_best ? ` at height ${allTimeOn.worker.height_at_best.toLocaleString()}` : ""}
@@ -394,20 +491,20 @@ function Detail({ r, apps }: { r: WorkerRow; apps: ForgeApp[] }) {
         )}
         {w?.connected_at && (
           <>
-            <dt className="text-foreground/90">Connected</dt>
+            <dt className="text-foreground/90">Connected:</dt>
             <dd>{timeAgo(w.connected_at)}</dd>
           </>
         )}
         {w?.payout_address && w.payout_address !== w.name && (
           <>
-            <dt className="text-foreground/90">Payout</dt>
+            <dt className="text-foreground/90">Payout Address:</dt>
             <dd className="min-w-0 break-all">{w.payout_address}</dd>
           </>
         )}
       </dl>
 
       <div>
-        <p className="text-[0.6rem] tracking-[0.12em] text-foreground/90 uppercase">Recent refused shares</p>
+        <p className="text-[0.6rem] tracking-[0.12em] text-foreground/90 uppercase">Recent rejected shares (log)</p>
         <RejectionList worker={r.name} />
       </div>
     </div>
@@ -431,8 +528,8 @@ function DetailPanel({ r, apps }: { r: WorkerRow | null; apps: ForgeApp[] }) {
         <span
           className="size-1.5 shrink-0 rounded-full"
           style={{
-            background: r.online ? "var(--neon-green)" : "#e0115f",
-            boxShadow: r.online ? "0 0 6px var(--neon-green)" : undefined,
+            background: r.online ? "var(--neon-green)" : "#ff0080",
+            boxShadow: r.online ? "0 0 6px var(--neon-green)" : "0 0 6px #ff0080",
           }}
         />
         <span className="min-w-0">
@@ -477,6 +574,28 @@ export function WorkersPanel({ apps, mesh }: { apps: ForgeApp[]; mesh: MeshStatu
 
   const [filter, setFilter] = useState<Filter>("all");
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "name", dir: "asc" });
+  const [view, setView] = useState<HashrateView>("avg");
+  // The sort and the hashrate view are saved on the engine, like the Nexus tab's
+  // settings, so they hold across reloads, restarts and devices. Each is marked
+  // once the user picks, so a saved value arriving late does not undo the pick.
+  const sortChosen = useRef(false);
+  const viewChosen = useRef(false);
+  useEffect(() => {
+    fetchMeshSettings().then((st) => {
+      const [key, dir] = (st?.miners_sort ?? "").split(":");
+      if (!sortChosen.current && SORTS.some((o) => o.key === key) && (dir === "asc" || dir === "desc")) {
+        setSort({ key: key as SortKey, dir });
+      }
+      if (!viewChosen.current && (st?.miners_hashrate === "live" || st?.miners_hashrate === "avg")) {
+        setView(st.miners_hashrate);
+      }
+    });
+  }, []);
+  const chooseView = (v: HashrateView) => {
+    viewChosen.current = true;
+    setView(v);
+    saveMeshSettings({ miners_hashrate: v });
+  };
   const [query, setQuery] = useState("");
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
 
@@ -494,7 +613,7 @@ export function WorkersPanel({ apps, mesh }: { apps: ForgeApp[]; mesh: MeshStatu
     return () => ro.disconnect();
   }, []);
 
-  const { rows, summary } = useMemo(() => buildWorkerRows(apps, mesh, found), [apps, mesh, found]);
+  const { rows, summary } = useMemo(() => buildWorkerRows(apps, mesh, found, view), [apps, mesh, found, view]);
   // Looked up in every row, not only those shown, so a selection survives a
   // filter or search that hides it from the list.
   const selectedRow = rows.find((r) => r.key === selectedKey) ?? null;
@@ -519,10 +638,15 @@ export function WorkersPanel({ apps, mesh }: { apps: ForgeApp[]; mesh: MeshStatu
     sort.dir,
   );
 
-  const choose = (key: SortKey, first: "asc" | "desc") =>
-    setSort((s) => (s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: first }));
+  const choose = (key: SortKey, first: "asc" | "desc") => {
+    const next: { key: SortKey; dir: "asc" | "desc" } =
+      sort.key === key ? { key, dir: sort.dir === "asc" ? "desc" : "asc" } : { key, dir: first };
+    sortChosen.current = true;
+    setSort(next);
+    saveMeshSettings({ miners_sort: `${next.key}:${next.dir}` });
+  };
 
-  const total48 = summary.accepted48h + summary.rejected48h;
+  const total48 = summary.accepted48h + summary.rejected48h + summary.stale48h;
 
   return (
     <div ref={wrapRef} className="mx-auto flex w-full max-w-[118.5rem] flex-col gap-4">
@@ -537,13 +661,15 @@ export function WorkersPanel({ apps, mesh }: { apps: ForgeApp[]; mesh: MeshStatu
           <Stat
             label="Offline"
             value={String(summary.offline)}
-            color={summary.offline > 0 ? "#e0115f" : undefined}
+            color={summary.offline > 0 ? "#ff0080" : undefined}
           />
-          <Stat label="Hashrate" value={formatHashrate(summary.hashrate)} color="var(--neon-cyan)" />
+          <Stat label="Total Hashrate" value={formatHashrate(summary.hashrate)} color="var(--neon-cyan)" />
           <Stat
-            label="Accepted 48h"
-            value={total48 > 0 ? `${((summary.accepted48h / total48) * 100).toFixed(2)}%` : "—"}
-            sub={total48 > 0 ? `${summary.accepted48h.toLocaleString()} shares` : undefined}
+            label="Shares 48h"
+            value={
+              total48 > 0 ? <Ars a={summary.accepted48h} r={summary.rejected48h} s={summary.stale48h} /> : "—"
+            }
+            sub={total48 > 0 ? `${((summary.accepted48h / total48) * 100).toFixed(2)}% accepted` : undefined}
           />
           <Stat
             label="Best share (session)"
@@ -605,6 +731,12 @@ export function WorkersPanel({ apps, mesh }: { apps: ForgeApp[]; mesh: MeshStatu
                 );
               })}
             </div>
+            <div className="flex items-center gap-1.5 @4xl:hidden">
+              <span className="mr-1 text-[0.6rem] font-semibold tracking-[0.18em] text-foreground/90 uppercase">
+                Hashrate
+              </span>
+              <HashrateToggle view={view} onChange={chooseView} />
+            </div>
             <label className="relative ml-auto flex items-center">
               <Search className="pointer-events-none absolute left-2 size-3.5 text-foreground/90" />
               <input
@@ -618,17 +750,22 @@ export function WorkersPanel({ apps, mesh }: { apps: ForgeApp[]; mesh: MeshStatu
           </div>
 
           <div
-            className={`mt-4 hidden gap-x-3 px-3 pb-1.5 text-[0.6rem] tracking-[0.12em] text-foreground/90 uppercase @4xl:grid ${COLS}`}
+            className={`mt-4 hidden items-end gap-x-3 px-3 pb-1.5 text-[0.68rem] tracking-[0.12em] text-foreground/90 uppercase @4xl:grid ${COLS}`}
           >
             <span className={wide ? "pl-3.5" : "pl-9"}>Miner</span>
             <span>Node</span>
-            <span>Hashrate</span>
+            <span className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
+              Hashrate
+              <HashrateToggle view={view} onChange={chooseView} />
+            </span>
             <span>Difficulty</span>
             <span>
-              Best share <span className="text-[0.5rem] text-foreground">(session)</span>
+              Best share <span className="text-[0.56rem] text-foreground">(session)</span>
             </span>
             <span>
-              Shares A / R / S <span className="text-[0.5rem] text-foreground">(session)</span>
+              Shares <span style={{ color: "var(--neon-green)" }}>A</span> / <span style={{ color: "#ff0080" }}>R</span> /{" "}
+              <span style={{ color: "var(--neon-gold)" }}>S</span>{" "}
+              <span className="text-[0.56rem] text-foreground">(session)</span>
             </span>
             <span>Last share</span>
             <span>Uptime</span>

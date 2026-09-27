@@ -87,7 +87,7 @@ export function BulkMoveModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-2">
-          <AlertTriangle className="size-4" style={{ color: "#e0115f" }} />
+          <AlertTriangle className="size-4" style={{ color: "#ff0080" }} />
           <h2 className="font-display text-sm font-bold">
             Move {chosen} miner{chosen === 1 ? "" : "s"} to the mesh?
           </h2>
@@ -174,7 +174,7 @@ export function BulkMoveModal({
         {!started && (
           <>
             <p className="mt-3 text-[0.8rem] leading-relaxed text-foreground">
-              <span style={{ color: "#e0115f" }}>⚠ Warning:</span> the primary pool each miner uses now will be
+              <span style={{ color: "#ff0080" }}>⚠ Warning:</span> the primary pool each miner uses now will be
               overridden, you should record its details if you wish to set it back manually later. Fallback pools
               and other settings are left alone.
             </p>

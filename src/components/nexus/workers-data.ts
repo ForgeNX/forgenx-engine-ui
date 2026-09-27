@@ -1,7 +1,8 @@
 // workers-data.ts - one row per physical miner, built from three sources:
 //   - each coin's worker sessions (shares, best share, difficulty, protocol)
 //   - the mesh status (which miners are meshed, and offline ones with last seen)
-//   - the LAN scanner (model, temperatures, the miner's own uptime)
+//   - the LAN scanner (model, temperatures, the miner's own uptime, its real
+//     address and its own hashrate)
 // A meshed miner has a session on every coin it is bonded to, so sessions are
 // grouped by the name after the last dot, which is the same across coins.
 //
@@ -15,6 +16,10 @@ import type { ForgeApp } from "./nexus-data";
 
 const OFFLINE_KEPT_MS = 7 * 24 * 60 * 60 * 1000;
 const live = (w: CoinWorker) => w.online !== false;
+
+// Which of a miner's own hashrate figures to show: its most recent one, or its
+// longer average. Miners the scanner cannot read show the same figure either way.
+export type HashrateView = "live" | "avg";
 
 export type WorkerCoin = {
   sym: string;
@@ -34,9 +39,11 @@ export type WorkerRow = {
   ip: string;
   hashrate: number; // TH/s
   hashrateSource: string; // where the figure came from: "miner", "mesh", "coin" or "scanner"
+  hashrateWindow: string; // for the miner's own figure, the window it covers, e.g. "1m" or "10m"
   asicTemp: number;
   asicTempMax: number;
   vrTemp: number;
+  boardTemp: number; // the hottest hash board, for miners with no VR sensor (Braiins OS); 0 when unknown
   uptime: number; // seconds, the miner's own; 0 when unknown
   lastSeen: string | null; // for an offline miner, when it last submitted
 };
@@ -47,6 +54,7 @@ export type WorkerSummary = {
   hashrate: number;
   accepted48h: number;
   rejected48h: number;
+  stale48h: number;
   bestSession: number;
   bestSessionBy: string;
   bestAllTime: number;
@@ -62,6 +70,7 @@ export function buildWorkerRows(
   apps: ForgeApp[],
   mesh: MeshStatus | null,
   found: FoundMiner[],
+  view: HashrateView = "avg",
 ): { rows: WorkerRow[]; summary: WorkerSummary } {
   // Sessions grouped by miner.
   const sessions = new Map<string, WorkerCoin[]>();
@@ -92,8 +101,14 @@ export function buildWorkerRows(
     );
     const active = coins.find((c) => live(c.worker) && !c.standby) ?? null;
     const m = meshByName.get(key);
-    const ip = m?.ip || active?.worker.ip || coins[0]?.worker.ip || "";
-    const scan = (ip && foundByHost.get(ip)) || foundByName.get(key);
+    // The scanner's reading, matched by the name the miner mines under, else by
+    // the address the mesh or a coin saw it at.
+    const seenAt = m?.ip || active?.worker.ip || coins[0]?.worker.ip || "";
+    const scan = foundByName.get(key) || (seenAt ? foundByHost.get(seenAt) : undefined);
+    // The address the scanner reached the miner on is its real LAN address. A
+    // direct miner's session only knows the address it connected from, which
+    // behind NAT is the gateway's.
+    const ip = scan?.host || seenAt;
 
     // A meshed miner is online when the relay has it; a direct one when a coin
     // has a live session for it.
@@ -104,19 +119,27 @@ export function buildWorkerRows(
       .sort()
       .pop();
 
-    // The mesh knows where its figure came from and prefers the miner's own;
-    // for a direct miner the coin's 15-minute average is used, then the scanner.
+    // The miner's own figure first, live or averaged as chosen. The scanner
+    // drops a miner it has not heard from in two minutes, so a reading here is
+    // current. Without one, the mesh's figure, then the coin's 15-minute
+    // average. An engine too old to send the average falls back to the live one.
     let hashrate = 0;
     let hashrateSource = "";
-    if (m && m.hashrate_15m > 0) {
+    let hashrateWindow = "";
+    const own =
+      view === "avg" && (scan?.hashrate10_ths ?? 0) > 0
+        ? { ths: scan?.hashrate10_ths ?? 0, window: scan?.hashrate10_window ?? "" }
+        : { ths: scan?.hashrate_ths ?? 0, window: scan?.hashrate_window ?? "" };
+    if (own.ths > 0) {
+      hashrate = own.ths;
+      hashrateSource = "miner";
+      hashrateWindow = own.window;
+    } else if (m && m.hashrate_15m > 0) {
       hashrate = m.hashrate_15m;
       hashrateSource = m.hashrate_source || "mesh";
     } else if (active && (active.worker.hashrate_15m ?? 0) > 0) {
       hashrate = active.worker.hashrate_15m ?? 0;
       hashrateSource = "coin";
-    } else if (scan && scan.hashrate_ths > 0) {
-      hashrate = scan.hashrate_ths;
-      hashrateSource = "scanner";
     }
 
     rows.push({
@@ -131,9 +154,11 @@ export function buildWorkerRows(
       ip,
       hashrate: online ? hashrate : 0,
       hashrateSource: online ? hashrateSource : "",
+      hashrateWindow: online ? hashrateWindow : "",
       asicTemp: m?.asic_temp || scan?.asic_temp || 0,
       asicTempMax: m?.asic_temp_max || scan?.asic_temp_max || 0,
       vrTemp: m?.vr_temp || scan?.vr_temp || 0,
+      boardTemp: scan?.board_temp || 0,
       uptime: online ? scan?.uptime_s || 0 : 0,
       lastSeen: online ? null : (m?.last_seen ?? seenOffline ?? null),
     });
@@ -147,6 +172,7 @@ export function buildWorkerRows(
     hashrate: rows.reduce((s, r) => s + r.hashrate, 0),
     accepted48h: 0,
     rejected48h: 0,
+    stale48h: 0,
     bestSession: 0,
     bestSessionBy: "",
     bestAllTime: 0,
@@ -156,6 +182,7 @@ export function buildWorkerRows(
     for (const c of r.coins) {
       summary.accepted48h += c.worker.shares_48h_valid ?? 0;
       summary.rejected48h += c.worker.shares_48h_invalid ?? 0;
+      summary.stale48h += c.worker.shares_48h_stale ?? 0;
       if ((c.worker.best_session ?? 0) > summary.bestSession) {
         summary.bestSession = c.worker.best_session ?? 0;
         summary.bestSessionBy = r.name;

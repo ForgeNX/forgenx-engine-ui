@@ -82,7 +82,7 @@ export function MoveToMeshModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-2">
-          <AlertTriangle className="size-4" style={{ color: "#e0115f" }} />
+          <AlertTriangle className="size-4" style={{ color: "#ff0080" }} />
           <h2 className="font-display text-sm font-bold">Move {miner.worker} to the mesh?</h2>
         </div>
 
@@ -112,7 +112,7 @@ export function MoveToMeshModal({
         </dl>
 
         <p className="mt-3 text-[0.8rem] leading-relaxed text-foreground">
-          <span style={{ color: "#e0115f" }}>⚠ Warning:</span> the pool this miner uses now will be lost,
+          <span style={{ color: "#ff0080" }}>⚠ Warning:</span> the pool this miner uses now will be lost,
           and you will need its details if you ever want to set it back by hand. Its protocol is set
           to Stratum V1 with extranonce subscribe on, which the mesh needs; its fallback pool and every
           other setting are left alone.

@@ -117,8 +117,10 @@ export type CoinWorker = {
   protocol?: string;
   shares_48h_valid?: number;
   shares_48h_invalid?: number;
+  shares_48h_stale?: number;
   shares_alltime_valid?: number;
   shares_alltime_invalid?: number;
+  shares_alltime_stale?: number;
   payout_address?: string;
   ip?: string;
   device?: string;
@@ -627,6 +629,8 @@ export type MeshSettings = {
   miners_found: number;
   miner_sort: string; // e.g. "hashrate:desc"
   discovered_sort: string;
+  miners_sort?: string; // the Miners tab's sort, e.g. "hashrate:desc"
+  miners_hashrate?: "live" | "avg"; // which of each miner's own figures the Miners tab shows
   auto_name: boolean;
   name_prefix: string;
   next_name: string; // the name the next miner added to the mesh would be given
@@ -641,7 +645,7 @@ export async function fetchMeshSettings(): Promise<MeshSettings | null> {
 // Saves whichever settings are given. The engine validates the range and
 // answers with the reason when it rejects one, which is passed back as error.
 export async function saveMeshSettings(
-  patch: Partial<Pick<MeshSettings, "network_start" | "network_end" | "include_new" | "miner_sort" | "discovered_sort" | "auto_name" | "name_prefix" | "mesh_address">>,
+  patch: Partial<Pick<MeshSettings, "network_start" | "network_end" | "include_new" | "miner_sort" | "discovered_sort" | "miners_sort" | "miners_hashrate" | "auto_name" | "name_prefix" | "mesh_address">>,
 ): Promise<{ ok: boolean; settings?: MeshSettings; error?: string }> {
   try {
     const res = await fetch("/api/mesh/settings", {
@@ -851,10 +855,16 @@ export type FoundMiner = {
   driver: string;
   model: string;
   chip: string;
-  hashrate_ths: number;
+  hashrate_ths: number; // the miner's most recent figure
+  hashrate10_ths?: number; // its longer average; absent from engines before 1.0.376
+  // The window each figure covers, as the miner labels it: "now", "5s", "1m",
+  // "5m", "10m", "15m", "30m", or "av" for an average since it started.
+  hashrate_window?: string;
+  hashrate10_window?: string;
   asic_temp: number;
   asic_temp_max: number;
   vr_temp: number;
+  board_temp?: number; // the hottest hash board, where the miner reports one (Braiins OS); 0 or absent when unknown
   uptime_s?: number; // the miner's own running time at the last sweep; 0 or absent when unknown
   pool_url: string;
   on_mesh: boolean;

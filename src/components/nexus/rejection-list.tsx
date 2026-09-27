@@ -25,7 +25,7 @@ export function RejectionList({ worker }: { worker: string }) {
 
   if (list === null) return <p className="mt-2 text-[0.68rem] text-muted-foreground">Reading…</p>;
   if (list.length === 0) {
-    return <p className="mt-2 text-[0.68rem] text-muted-foreground">No refused shares on record.</p>;
+    return <p className="mt-2 text-[0.68rem] text-muted-foreground">No rejected shares on record.</p>;
   }
 
   return (
