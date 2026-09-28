@@ -167,11 +167,11 @@ export function NexusShell() {
         <span
           role="status"
           aria-label={`Engine ${status.label.toLowerCase()}`}
-          className="flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold tracking-[0.14em] uppercase"
+          className="flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[0.6rem] font-semibold tracking-[0.16em] uppercase"
           style={{
             color: status.color,
-            borderColor: `color-mix(in oklab, ${status.color} 50%, transparent)`,
-            boxShadow: `0 0 20px -8px ${status.color}`,
+            borderColor: `color-mix(in oklab, ${status.color} 55%, transparent)`,
+            boxShadow: `0 0 14px -4px ${status.color}`,
           }}
         >
           <span

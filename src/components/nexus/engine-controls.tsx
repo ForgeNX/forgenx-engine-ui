@@ -108,14 +108,14 @@ export function EngineControls() {
           type="button"
           aria-label="Engine controls"
           onClick={() => setMenuOpen((v) => !v)}
-          className="flex size-9 items-center justify-center rounded-xl border text-neon-cyan transition-all hover:brightness-125"
+          className="flex size-8 items-center justify-center rounded-xl border text-neon-cyan transition-all hover:brightness-125"
           style={{
             borderColor: "color-mix(in oklab, var(--neon-cyan) 45%, transparent)",
             background: "color-mix(in oklab, var(--neon-cyan) 8%, transparent)",
             boxShadow: "0 0 16px -6px var(--neon-cyan)",
           }}
         >
-          <MoreVertical className="size-4" />
+          <MoreVertical className="size-3.5" />
         </button>
 
         {menuOpen && (

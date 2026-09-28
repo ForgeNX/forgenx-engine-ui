@@ -6,6 +6,16 @@ export function formatHashrate(th: number): string {
   return th >= 1000 ? `${(th / 1000).toFixed(2)} PH/s` : `${th.toFixed(2)} TH/s`;
 }
 
+// A best share against the network difficulty when it was found, and the
+// block it was found at: "0.022% of 551.05G for block 970,398", as the coin
+// apps' worker tables show it. Empty when the share has no recorded context.
+export function bestShareContext(best: number, netDiff: number, height?: number): string {
+  if (!best || !netDiff) return "";
+  const pct = (best / netDiff) * 100;
+  const p = pct >= 1 ? pct.toFixed(1) : pct.toPrecision(2);
+  return `${p}% of ${compactNumber(netDiff)}${height ? ` for block ${height.toLocaleString()}` : ""}`;
+}
+
 // Share and difficulty figures, which run from thousands to trillions:
 // 1207411 -> "1.21M", 950 -> "950".
 export function compactNumber(n: number): string {

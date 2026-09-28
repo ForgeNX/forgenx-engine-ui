@@ -3,7 +3,7 @@ import { ChevronDown, Cpu, Search } from "lucide-react";
 import { AuroraText } from "./aurora-text";
 import { RejectionList } from "./rejection-list";
 import { ShineBorder } from "./shine-border";
-import { compactNumber, formatHashrate, timeAgo } from "./format";
+import { bestShareContext, compactNumber, formatHashrate, timeAgo } from "./format";
 import { bestOf, buildWorkerRows, formatUptime, realTime, type HashrateView, type WorkerRow } from "./workers-data";
 import { fetchMeshSettings, saveMeshSettings, type FoundMiner, type MeshStatus } from "@/lib/forge-api";
 import type { ForgeApp } from "./nexus-data";
@@ -42,7 +42,7 @@ const SORTS: { key: SortKey; label: string; first: "asc" | "desc" }[] = [
 // Where a miner's hashrate figure came from, worded and coloured as on the Nexus
 // tab: its own reading is exact, the relay's is inferred from shares, and a
 // node's average is the least precise.
-const SOURCE: Record<string, { text: string; color: string }> = {
+export const SOURCE: Record<string, { text: string; color: string }> = {
   miner: { text: "from miner", color: "var(--neon-green)" },
   scanner: { text: "from miner", color: "var(--neon-green)" },
   mesh: { text: "at relay", color: "var(--neon-cyan)" },
@@ -50,7 +50,7 @@ const SOURCE: Record<string, { text: string; color: string }> = {
 };
 
 // The window a miner's own figure covers, as it reads under the hashrate.
-function windowText(w: string): string {
+export function windowText(w: string): string {
   if (w === "now") return "now";
   if (w === "av") return "since boot";
   return w;
@@ -144,13 +144,6 @@ function sortRows(rows: WorkerRow[], key: SortKey, dir: "asc" | "desc"): WorkerR
   );
 }
 
-// A best share as a share of the network difficulty it was found against: how
-// close it came to a block.
-function ofNetwork(best: number, netDiff: number): string {
-  if (!best || !netDiff) return "";
-  const pct = (best / netDiff) * 100;
-  return pct >= 1 ? `${pct.toFixed(1)}%` : `${pct.toPrecision(2)}%`;
-}
 
 function Stat({ label, value, sub, color }: { label: string; value: ReactNode; sub?: string; color?: string }) {
   return (
@@ -168,7 +161,7 @@ function Stat({ label, value, sub, color }: { label: string; value: ReactNode; s
 // enough; narrower, each row lays its figures out in labelled pairs instead.
 // Miner, Node, Hashrate, Difficulty, Best share, Shares, Last share, Uptime.
 const COLS =
-  "@4xl:grid-cols-[minmax(10rem,1.5fr)_minmax(6.5rem,1fr)_minmax(5.5rem,1fr)_minmax(4.5rem,0.7fr)_minmax(7.5rem,1.1fr)_minmax(6.5rem,1fr)_minmax(5rem,0.8fr)_minmax(4rem,0.6fr)]";
+  "@4xl:grid-cols-[minmax(10rem,1.5fr)_minmax(6.5rem,1fr)_minmax(5.5rem,1.15fr)_minmax(4.5rem,0.65fr)_minmax(7.5rem,1.6fr)_minmax(6.5rem,0.95fr)_minmax(5rem,0.7fr)_minmax(4rem,0.55fr)]";
 
 function Label({ children }: { children: string }) {
   return <span className="mr-1.5 text-[0.6rem] tracking-[0.12em] text-foreground/90 uppercase @4xl:hidden">{children}</span>;
@@ -294,9 +287,9 @@ function Row({
           {best.best > 0 ? (
             <>
               <span className="text-neon-cyan">{compactNumber(best.best)}</span>
-              {ofNetwork(best.best, best.netDiff) && (
+              {bestShareContext(best.best, best.netDiff, best.height) && (
                 <span className="block text-[0.62rem] text-foreground/90">
-                  {ofNetwork(best.best, best.netDiff)} of {best.sym} network
+                  {bestShareContext(best.best, best.netDiff, best.height)}
                 </span>
               )}
             </>

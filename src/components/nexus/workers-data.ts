@@ -216,11 +216,17 @@ export function buildWorkerRows(
 
 // The miner's best share this session across its coins, with the network
 // difficulty it was found against, so it can be read as a share of a block.
-export function bestOf(r: WorkerRow): { best: number; netDiff: number; sym: string } {
-  let out = { best: 0, netDiff: 0, sym: "" };
+export function bestOf(r: WorkerRow): { best: number; netDiff: number; height: number; sym: string } {
+  let out = { best: 0, netDiff: 0, height: 0, sym: "" };
   for (const c of r.coins) {
     const b = c.worker.best_session ?? 0;
-    if (b > out.best) out = { best: b, netDiff: c.worker.best_session_network_diff ?? 0, sym: c.sym };
+    if (b > out.best)
+      out = {
+        best: b,
+        netDiff: c.worker.best_session_network_diff ?? 0,
+        height: c.worker.best_session_height ?? 0,
+        sym: c.sym,
+      };
   }
   return out;
 }

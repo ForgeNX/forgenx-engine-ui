@@ -1,10 +1,11 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
-import { ExternalLink, Network } from "lucide-react";
+import { Activity, ExternalLink, Network } from "lucide-react";
 
 import { AuroraText } from "./aurora-text";
-import { compactNumber, formatHashrate, timeAgo } from "./format";
+import { ShineBorder } from "./shine-border";
+import { bestShareContext, compactNumber, formatHashrate, timeAgo } from "./format";
 import type { ForgeApp } from "./nexus-data";
-import { Ars, HashrateToggle } from "./workers-panel";
+import { Ars, HashrateToggle, SOURCE, windowText } from "./workers-panel";
 import type { HashrateView, WorkerRow } from "./workers-data";
 import { fetchAppLinks, fetchMeshSettings, saveMeshSettings } from "@/lib/forge-api";
 
@@ -35,6 +36,10 @@ const NODE_SORTS: { key: NodeSortKey; label: string; first: Dir }[] = [
   { key: "miners", label: "Miners", first: "desc" },
   { key: "status", label: "Status", first: "desc" },
 ];
+// Miners on a node: miner, connection, hashrate, difficulty, best share.
+const MINER_COLS =
+  "grid-cols-[minmax(10rem,1.4fr)_minmax(6rem,0.8fr)_minmax(7rem,1fr)_minmax(5rem,0.7fr)_minmax(12rem,1.5fr)]";
+
 const MINER_SORT_FIRST: Record<MinerSortKey, Dir> = { name: "asc", hashrate: "desc", best: "desc" };
 
 function parseSort<K extends string>(saved: string | undefined, keys: readonly K[]): Sort<K> | null {
@@ -272,7 +277,7 @@ function DropLine({
             {sub && <span className="text-[0.58rem] text-foreground"> ({sub})</span>}:
           </span>
           <span
-            className="text-[0.6rem] transition-transform"
+            className="text-[0.9rem] leading-none transition-transform"
             style={{ color: "var(--neon-green)", transform: open ? "rotate(180deg)" : undefined }}
           >
             ▾
@@ -302,6 +307,46 @@ function achievedAt(iso?: string): string | null {
   const h = d.getHours();
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${h % 12 || 12}:${pad(d.getMinutes())}${h < 12 ? "am" : "pm"} ${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+}
+
+// Who found the best share, opening to show when they found it.
+function ByDrop({ name, at }: { name?: string; at?: string | null }) {
+  const [open, setOpen] = useState(false);
+  if (!name) return at ? <span className="block truncate">{at}</span> : null;
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="inline-flex items-center gap-1 transition hover:text-foreground"
+      >
+        by {name}
+        {at && (
+          <span
+            className="text-[0.9rem] leading-none transition-transform"
+            style={{ color: "var(--neon-green)", transform: open ? "rotate(180deg)" : undefined }}
+          >
+            ▾
+          </span>
+        )}
+      </button>
+      {open && at && <span className="block truncate">Achieved: {at}</span>}
+    </>
+  );
+}
+
+// A headline figure for the node, laid out as the Mesh Overview's figures.
+function Tile({ label, value, sub, color }: { label: string; value: ReactNode; sub?: ReactNode; color?: string }) {
+  return (
+    <div className="flex min-w-0 flex-col items-center text-center">
+      <span className="text-[0.6rem] tracking-[0.14em] text-foreground/90 uppercase">{label}</span>
+      <span className="font-mono text-sm font-semibold" style={{ color: color ?? "var(--foreground)" }}>
+        {value}
+      </span>
+      {sub && <span className="max-w-full font-mono text-[0.62rem] text-foreground/90">{sub}</span>}
+    </div>
+  );
 }
 
 function Pill({ label, value, sub, color }: { label: string; value: ReactNode; sub?: string; color?: string }) {
@@ -388,19 +433,62 @@ function NodeDetail({
     </button>
   );
 
+  const found = pool?.blocks_found ?? 0;
+  const orphaned = pool?.blocks_orphaned ?? 0;
+  const bestBy = pool?.best_session_worker ? pool.best_session_worker.split(".").pop() : "";
+  const bestAt = achievedAt(pool?.best_session_time);
+
   return (
     <div className="flex flex-col gap-3 font-mono text-[0.72rem]">
-      <div className="grid gap-3 @4xl:grid-cols-2">
-        <Section title="Mining status">
-          <Line label="Worker count">
+      {/* The node's headline figures, full width above the detail. */}
+      <div
+        className="relative overflow-hidden rounded-xl border border-border/70 p-4"
+        style={{ background: "color-mix(in oklab, var(--secondary) 25%, transparent)" }}
+      >
+        {/* The same moving beam, in the coin's colour, as the node panel on the Overview tab. */}
+        <ShineBorder borderWidth={1.5} duration={14} shineColor={[app.color, "var(--neon-cyan)", app.color]} />
+        <span className="flex items-center gap-2">
+          <Activity className="size-4 text-neon-cyan" />
+          <span className="font-display text-sm font-bold">Node Overview</span>
+        </span>
+        <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 @2xl:grid-cols-4">
+        <Tile
+          label="Worker count"
+          value={
             <span style={{ color: miners.mining.length > 0 ? "var(--neon-green)" : undefined }}>
               {miners.mining.length} mining
             </span>
-            <span className="text-foreground/90"> · {miners.standby} on standby</span>
-          </Line>
-          <Line label="Total hashrate" sub={view === "live" ? "live" : "avg"}>
-            <span className="text-neon-cyan">{miners.ths > 0 ? formatHashrate(miners.ths) : "—"}</span>
-          </Line>
+          }
+          sub={`${miners.standby} on standby`}
+        />
+        <Tile
+          label={`Total hashrate (${view === "live" ? "live" : "avg"})`}
+          value={miners.ths > 0 ? formatHashrate(miners.ths) : "—"}
+          color="var(--neon-cyan)"
+        />
+        <Tile
+          label="Best share (session)"
+          value={(pool?.best_session_diff ?? 0) > 0 ? compactNumber(pool?.best_session_diff ?? 0) : "—"}
+          color="var(--neon-cyan)"
+          sub={
+            bestBy || bestAt ? (
+              <>
+                <ByDrop name={bestBy} at={bestAt} />
+              </>
+            ) : undefined
+          }
+        />
+        <Tile
+          label="Blocks found"
+          value={found.toLocaleString()}
+          color={found > 0 ? "var(--neon-gold)" : undefined}
+          sub={orphaned > 0 ? <span style={{ color: "#ff0080" }}>{orphaned} orphaned</span> : undefined}
+        />
+        </div>
+      </div>
+
+      <div className="grid gap-3 @4xl:grid-cols-2">
+        <Section title="Mining status">
           <Line label="Max session hashrate" sub={view === "live" ? "live" : "avg"}>
             {peak > 0 ? formatHashrate(peak) : "—"}
           </Line>
@@ -427,19 +515,6 @@ function NodeDetail({
                 value: (pool?.best_ratio_height ?? 0) > 0 ? (pool?.best_ratio_height ?? 0).toLocaleString() : "—",
               },
             ]}
-          />
-          <DropLine
-            label="Best share difficulty"
-            sub="session"
-            value={
-              <>
-                <span className="text-neon-cyan">
-                  {(pool?.best_session_diff ?? 0) > 0 ? compactNumber(pool?.best_session_diff ?? 0) : "—"}
-                </span>
-                <By name={pool?.best_session_worker ? pool.best_session_worker.split(".").pop() : undefined} />
-              </>
-            }
-            details={[{ label: "Achieved", value: achievedAt(pool?.best_session_time) ?? "—" }]}
           />
           <Line label="Network difficulty">{difficulty > 0 ? compactNumber(difficulty) : "—"}</Line>
           <Line label="Last share">{agoSeconds(pool?.last_share_time)}</Line>
@@ -482,36 +557,90 @@ function NodeDetail({
           </p>
         ) : (
           <>
-            <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)] gap-x-3 pb-1 text-[0.58rem] tracking-[0.12em] text-foreground/90 uppercase">
-              {head("name", "Miner")}
-              {head("hashrate", "Hashrate", true)}
-              {head(
-                "best",
-                <>
-                  Best share <span className="text-[0.5rem] text-foreground normal-case">(session)</span>
-                </>,
-                true,
-              )}
-            </div>
-            <div className="flex flex-col">
-              {sortedMiners
-                .map((r) => (
-                  <button
-                    key={r.key}
-                    type="button"
-                    onClick={() => onOpenMiner(r.key)}
-                    title={`Open ${r.name} on the Miners tab`}
-                    className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)] items-center gap-x-3 rounded-md border-b border-border/30 px-1 py-1 text-left transition last:border-b-0 hover:bg-secondary/40"
-                  >
-                    <span className="flex min-w-0 items-center gap-2">
-                      <span className="size-1.5 shrink-0 rounded-full" style={{ background: "var(--neon-green)", boxShadow: "0 0 6px var(--neon-green)" }} />
-                      <span className="truncate font-semibold">{r.name}</span>
-                      {r.viaMesh && <span className="text-[0.55rem] text-neon-cyan">Mesh</span>}
-                    </span>
-                    <span className="text-right text-neon-cyan">{r.hashrate > 0 ? formatHashrate(r.hashrate) : "—"}</span>
-                    <span className="text-right text-neon-cyan">{bestOn(r) > 0 ? compactNumber(bestOn(r)) : "—"}</span>
-                  </button>
-                ))}
+            {/* The same columns as the Miners tab's list, for the miners on this node. */}
+            <div className="overflow-x-auto">
+              <div className="min-w-[46rem]">
+                <div className={`grid ${MINER_COLS} gap-x-3 px-1 pb-1.5 text-[0.58rem] tracking-[0.12em] text-foreground/90 uppercase`}>
+                  {head("name", "Miner")}
+                  <span className="uppercase">Connection</span>
+                  {head("hashrate", "Hashrate")}
+                  <span className="uppercase">Difficulty</span>
+                  {head(
+                    "best",
+                    <>
+                      Best share <span className="text-[0.5rem] text-foreground normal-case">(session)</span>
+                    </>,
+                  )}
+                </div>
+                <div className="flex flex-col">
+                  {sortedMiners.map((r) => {
+                    const w = r.coins.find((c) => c.sym === sym)?.worker;
+                    const best = w?.best_session ?? 0;
+                    const context = bestShareContext(best, w?.best_session_network_diff ?? 0, w?.best_session_height);
+                    const source = SOURCE[r.hashrateSource];
+                    return (
+                      <button
+                        key={r.key}
+                        type="button"
+                        onClick={() => onOpenMiner(r.key)}
+                        title={`Open ${r.name} on the Miners tab`}
+                        className={`grid ${MINER_COLS} items-center gap-x-3 rounded-md border-b border-border/30 px-1 py-1.5 text-left transition last:border-b-0 hover:bg-secondary/40`}
+                      >
+                        {/* Miner, with its device and address */}
+                        <span className="flex min-w-0 items-center gap-2">
+                          <span
+                            className="size-1.5 shrink-0 rounded-full"
+                            style={{ background: "var(--neon-green)", boxShadow: "0 0 6px var(--neon-green)" }}
+                          />
+                          <span className="min-w-0">
+                            <span className="block truncate font-semibold">{r.name}</span>
+                            <span className="block truncate text-[0.62rem] text-foreground/90">
+                              {r.model || "unknown device"}
+                              {r.ip && ` · ${r.ip}`}
+                            </span>
+                          </span>
+                        </span>
+
+                        {/* How it connects: through the mesh or direct, and the protocol */}
+                        <span className="flex flex-wrap items-center gap-x-1.5">
+                          <span
+                            className="rounded border px-1 text-[0.58rem] font-semibold"
+                            style={
+                              r.viaMesh
+                                ? { borderColor: "var(--neon-cyan)", color: "var(--neon-cyan)" }
+                                : { borderColor: "var(--border)", color: "var(--foreground)" }
+                            }
+                          >
+                            {r.viaMesh ? "Mesh" : "Direct"}
+                          </span>
+                          {w?.protocol && <span className="text-[0.6rem] text-foreground/90">{w.protocol.toUpperCase()}</span>}
+                        </span>
+
+                        {/* Hashrate, and where the figure came from */}
+                        <span>
+                          <span style={{ color: source?.color ?? "var(--neon-cyan)" }}>
+                            {r.hashrate > 0 ? formatHashrate(r.hashrate) : "—"}
+                          </span>
+                          {source && r.hashrate > 0 && (
+                            <span className="block text-[0.62rem] text-foreground">
+                              ({source.text}
+                              {r.hashrateWindow && ` · ${windowText(r.hashrateWindow)}`})
+                            </span>
+                          )}
+                        </span>
+
+                        <span>{(w?.difficulty ?? 0) > 0 ? compactNumber(w?.difficulty ?? 0) : "—"}</span>
+
+                        {/* Best share this session, against the network when it was found */}
+                        <span>
+                          <span className="text-neon-cyan">{best > 0 ? compactNumber(best) : "—"}</span>
+                          {context && <span className="block text-[0.62rem] text-foreground/90">{context}</span>}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </>
         )}
@@ -553,7 +682,7 @@ function NodeDetail({
       </Section>
 
       {link && (
-        <p className="text-[0.62rem] text-foreground/90">
+        <p className="text-[0.7rem] text-foreground/90">
           Settings, found blocks, charts and logs are in{" "}
           <a href={link} target="_blank" rel="noreferrer" className="text-neon-cyan hover:underline">
             {app.ticker}
@@ -565,7 +694,7 @@ function NodeDetail({
   );
 }
 
-function DetailHeader({ app, link }: { app: ForgeApp; link?: string }) {
+function DetailHeader({ app }: { app: ForgeApp }) {
   return (
     <header className="flex flex-wrap items-center gap-3">
       <CoinIcon app={app} size="size-14" />
@@ -575,25 +704,6 @@ function DetailHeader({ app, link }: { app: ForgeApp; link?: string }) {
         </h2>
         <p className="text-xs text-white">{app.chain}</p>
       </div>
-      <span className="ml-auto flex flex-wrap items-center gap-2">
-        <OnlineBadge online={app.online} />
-        {link && (
-          <a
-            href={link}
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center gap-1.5 rounded-lg border px-3 py-1 text-[0.72rem] font-semibold transition"
-            style={{
-              borderColor: "var(--neon-cyan)",
-              color: "var(--neon-cyan)",
-              background: "color-mix(in oklab, var(--neon-cyan) 10%, transparent)",
-            }}
-          >
-            Open {app.ticker}
-            <ExternalLink className="size-3.5" />
-          </a>
-        )}
-      </span>
     </header>
   );
 }
@@ -774,7 +884,7 @@ export function NodesPanel({
               key={selected.id}
               className="panel-neon animate-rise @container sticky top-4 flex min-w-0 flex-col self-start p-5"
             >
-              <DetailHeader app={selected} link={linkFor(selected)} />
+              <DetailHeader app={selected} />
               <div className="mt-4">
                 <NodeDetail
                   app={selected}
