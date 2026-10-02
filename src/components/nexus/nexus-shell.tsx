@@ -18,6 +18,7 @@ import { SettingsPanel } from "./settings-panel";
 import { WorkersPanel } from "./workers-panel";
 import { NodesPanel } from "./nodes-panel";
 import { StatPills } from "./stat-pills";
+import { ShineBorder } from "./shine-border";
 import { NEXUS_TABS, type NexusTab } from "./nexus-data";
 import { useForgeApps } from "@/hooks/use-forge-apps";
 import { useEngineInfo, useEngineStatus, useCoinSV2List } from "@/hooks/use-engine-meta";
@@ -55,6 +56,12 @@ export function NexusShell() {
   const openMiner = (key: string) => {
     setMinerFocus((f) => ({ key, n: (f?.n ?? 0) + 1 }));
     setTab("Miners");
+  };
+  // A node opened from the Overview tab: the Nodes tab shows it on arrival.
+  const [nodeFocus, setNodeFocus] = useState<string | null>(null);
+  const openNode = (id: string) => {
+    setNodeFocus(id);
+    setTab("Nodes");
   };
   const perNode = useMemo(() => {
     const out: Record<string, { miners: number; ths: number }> = {};
@@ -105,6 +112,12 @@ export function NexusShell() {
     // but is not a scroll container: a sticky panel inside (the Miners detail)
     // then holds its place as the page scrolls.
     <div className="panel-neon relative m-2 flex min-h-[calc(100vh-1rem)] flex-col md:m-4" style={{ overflow: "clip" }}>
+      {/* The moving multicolour border, as on the ForgeNX engine widget. */}
+      <ShineBorder
+        borderWidth={1.5}
+        duration={14}
+        shineColor={["var(--neon-cyan)", "var(--neon-pink)", "var(--neon-gold)"]}
+      />
       <span
         className="pointer-events-none absolute inset-x-0 top-0 h-px"
         style={{
@@ -201,11 +214,11 @@ export function NexusShell() {
             <>
               <StatPills apps={apps} fleet={fleet} hashrateThs={minersHashrate} />
               <div className="grid gap-4 2xl:grid-cols-[minmax(0,1.05fr)_minmax(0,1.2fr)_minmax(0,1.25fr)]">
-                <NodeStatus apps={apps} selectedId={selected.id} onSelect={setSelectedId} />
+                <NodeStatus apps={apps} selectedId={selected.id} onSelect={setSelectedId} onViewNode={openNode} />
                 <NodeDetail app={selected} />
                 <HashrateDistribution apps={apps} perNode={perNode} selectedId={selected.id} onSelect={setSelectedId} />
               </div>
-              <HashrateChart app={selected} />
+              <HashrateChart app={selected} poolThs={perNode[selected.id.toUpperCase()]?.ths ?? 0} view={minersView} />
             </>
           ) : (
             <div className="panel-neon animate-rise flex min-h-[300px] flex-col items-center justify-center gap-3 p-10 text-center">
@@ -266,6 +279,7 @@ export function NexusShell() {
             view={minersView}
             onViewChange={setMinersView}
             onOpenMiner={openMiner}
+            initialId={nodeFocus}
           />
         ) : tab === "Settings" ? (
           <SettingsPanel coins={sv2Coins} refresh={refreshSV2} />
