@@ -7,13 +7,20 @@ export function formatHashrate(th: number): string {
 }
 
 // A best share against the network difficulty when it was found, and the
-// block it was found at: "0.022% of 551.05G for block 970,398", as the coin
+// block it was found at: "0.022% of 551.05G (block 970,398)", as the coin
 // apps' worker tables show it. Empty when the share has no recorded context.
 export function bestShareContext(best: number, netDiff: number, height?: number): string {
   if (!best || !netDiff) return "";
   const pct = (best / netDiff) * 100;
   const p = pct >= 1 ? pct.toFixed(1) : pct.toPrecision(2);
-  return `${p}% of ${compactNumber(netDiff)}${height ? ` for block ${height.toLocaleString()}` : ""}`;
+  return `${p}% of ${bestShare(netDiff)}${height ? ` (block ${height.toLocaleString()})` : ""}`;
+}
+
+// A best share, with a space before its unit: 520000000 -> "520.00 M".
+export function bestShare(n: number): string {
+  const s = compactNumber(n);
+  const unit = s.slice(-1);
+  return "KMGTP".includes(unit) ? `${s.slice(0, -1)} ${unit}` : s;
 }
 
 // Share and difficulty figures, which run from thousands to trillions:

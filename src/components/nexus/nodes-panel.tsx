@@ -1,9 +1,10 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { Activity, ExternalLink, Network } from "lucide-react";
 
 import { AuroraText } from "./aurora-text";
 import { ShineBorder } from "./shine-border";
-import { bestShareContext, compactNumber, formatHashrate, timeAgo } from "./format";
+import { bestShare, bestShareContext, compactNumber, formatHashrate, timeAgo } from "./format";
 import type { ForgeApp } from "./nexus-data";
 import { Ars, HashrateToggle, SOURCE, windowText } from "./workers-panel";
 import type { HashrateView, WorkerRow } from "./workers-data";
@@ -27,7 +28,7 @@ const SIDE_BY_SIDE_PX = 81 * 16;
 // devices.
 type Dir = "asc" | "desc";
 type NodeSortKey = "name" | "hashrate" | "miners" | "status";
-type MinerSortKey = "name" | "hashrate" | "best";
+type MinerSortKey = "name" | "connection" | "hashrate" | "difficulty" | "best";
 type Sort<K> = { key: K; dir: Dir };
 
 const NODE_SORTS: { key: NodeSortKey; label: string; first: Dir }[] = [
@@ -40,7 +41,13 @@ const NODE_SORTS: { key: NodeSortKey; label: string; first: Dir }[] = [
 const MINER_COLS =
   "grid-cols-[minmax(10rem,1.4fr)_minmax(6rem,0.8fr)_minmax(7rem,1fr)_minmax(5rem,0.7fr)_minmax(12rem,1.5fr)]";
 
-const MINER_SORT_FIRST: Record<MinerSortKey, Dir> = { name: "asc", hashrate: "desc", best: "desc" };
+const MINER_SORT_FIRST: Record<MinerSortKey, Dir> = {
+  name: "asc",
+  connection: "asc",
+  hashrate: "desc",
+  difficulty: "desc",
+  best: "desc",
+};
 
 function parseSort<K extends string>(saved: string | undefined, keys: readonly K[]): Sort<K> | null {
   const [key, dir] = (saved ?? "").split(":");
@@ -410,10 +417,19 @@ function NodeDetail({
   const lag = node ? Math.max(0, (node.headers ?? 0) - (node.blocks ?? 0)) : 0;
   const difficulty = node?.difficulty ?? 0;
   const bestOn = (r: WorkerRow) => r.coins.find((c) => c.sym === sym)?.worker.best_session ?? 0;
+  // The hover label on a miner row, drawn by the pointer. A browser's own
+  // tooltip cannot be styled, so this one is ours.
+  const [tip, setTip] = useState<{ text: string; x: number; y: number } | null>(null);
   const sign = sort.dir === "desc" ? -1 : 1;
+  const sessionOn = (r: WorkerRow) => r.coins.find((c) => c.sym === sym)?.worker;
   const minerCmp: Record<MinerSortKey, (a: WorkerRow, b: WorkerRow) => number> = {
     name: (a, b) => byName(a.name, b.name),
+    // Mesh before Direct, then by protocol.
+    connection: (a, b) =>
+      Number(!a.viaMesh) - Number(!b.viaMesh) ||
+      (sessionOn(a)?.protocol ?? "~").localeCompare(sessionOn(b)?.protocol ?? "~"),
     hashrate: (a, b) => a.hashrate - b.hashrate,
+    difficulty: (a, b) => (sessionOn(a)?.difficulty ?? 0) - (sessionOn(b)?.difficulty ?? 0),
     best: (a, b) => bestOn(a) - bestOn(b),
   };
   // Names break ties so rows keep their places between polls.
@@ -468,7 +484,7 @@ function NodeDetail({
         />
         <Tile
           label="Best share (session)"
-          value={(pool?.best_session_diff ?? 0) > 0 ? compactNumber(pool?.best_session_diff ?? 0) : "—"}
+          value={(pool?.best_session_diff ?? 0) > 0 ? bestShare(pool?.best_session_diff ?? 0) : "—"}
           color="var(--neon-cyan)"
           sub={
             bestBy || bestAt ? (
@@ -504,7 +520,7 @@ function NodeDetail({
             details={[
               {
                 label: "Share difficulty",
-                value: (pool?.best_ratio_share_diff ?? 0) > 0 ? compactNumber(pool?.best_ratio_share_diff ?? 0) : "—",
+                value: (pool?.best_ratio_share_diff ?? 0) > 0 ? bestShare(pool?.best_ratio_share_diff ?? 0) : "—",
               },
               {
                 label: "Network difficulty",
@@ -529,7 +545,7 @@ function NodeDetail({
         <Section title="All time node stats">
           <Line label="Best share difficulty" sub="all time">
             <span className="text-neon-cyan">
-              {(pool?.best_all_time_diff ?? 0) > 0 ? compactNumber(pool?.best_all_time_diff ?? 0) : "—"}
+              {(pool?.best_all_time_diff ?? 0) > 0 ? bestShare(pool?.best_all_time_diff ?? 0) : "—"}
             </span>
             <By name={pool?.best_all_time_worker ? pool.best_all_time_worker.split(".").pop() : undefined} />
           </Line>
@@ -562,9 +578,9 @@ function NodeDetail({
               <div className="min-w-[46rem]">
                 <div className={`grid ${MINER_COLS} gap-x-3 px-1 pb-1.5 text-[0.58rem] tracking-[0.12em] text-foreground/90 uppercase`}>
                   {head("name", "Miner")}
-                  <span className="uppercase">Connection</span>
+                  {head("connection", "Connection")}
                   {head("hashrate", "Hashrate")}
-                  <span className="uppercase">Difficulty</span>
+                  {head("difficulty", "Difficulty")}
                   {head(
                     "best",
                     <>
@@ -583,7 +599,9 @@ function NodeDetail({
                         key={r.key}
                         type="button"
                         onClick={() => onOpenMiner(r.key)}
-                        title={`Open ${r.name} on the Miners tab`}
+                        aria-label={`Open ${r.name} on the Miners tab`}
+                        onMouseMove={(e) => setTip({ text: `Open ${r.name} on the Miners tab`, x: e.clientX, y: e.clientY })}
+                        onMouseLeave={() => setTip(null)}
                         className={`grid ${MINER_COLS} items-center gap-x-3 rounded-md border-b border-border/30 px-1 py-1.5 text-left transition last:border-b-0 hover:bg-secondary/40`}
                       >
                         {/* Miner, with its device and address */}
@@ -608,7 +626,7 @@ function NodeDetail({
                             style={
                               r.viaMesh
                                 ? { borderColor: "var(--neon-cyan)", color: "var(--neon-cyan)" }
-                                : { borderColor: "var(--border)", color: "var(--foreground)" }
+                                : { borderColor: "oklch(0.78 0.17 296)", color: "oklch(0.78 0.17 296)" }
                             }
                           >
                             {r.viaMesh ? "Mesh" : "Direct"}
@@ -633,7 +651,7 @@ function NodeDetail({
 
                         {/* Best share this session, against the network when it was found */}
                         <span>
-                          <span className="text-neon-cyan">{best > 0 ? compactNumber(best) : "—"}</span>
+                          <span className="text-neon-cyan">{best > 0 ? bestShare(best) : "—"}</span>
                           {context && <span className="block text-[0.62rem] text-foreground/90">{context}</span>}
                         </span>
                       </button>
@@ -681,6 +699,22 @@ function NodeDetail({
         </div>
       </Section>
 
+      {tip &&
+        createPortal(
+          <div
+            role="tooltip"
+            className="pointer-events-none fixed z-50 rounded-md border px-2 py-1 font-mono text-[0.68rem] font-semibold whitespace-nowrap text-white shadow-lg"
+            style={{
+              left: tip.x + 14,
+              top: tip.y + 16,
+              background: "color-mix(in oklab, var(--neon-cyan) 10%, #02050d)",
+              borderColor: "color-mix(in oklab, var(--neon-cyan) 60%, transparent)",
+            }}
+          >
+            {tip.text}
+          </div>,
+          document.body,
+        )}
       {link && (
         <p className="text-[0.7rem] text-foreground/90">
           Settings, found blocks, charts and logs are in{" "}
@@ -714,12 +748,15 @@ export function NodesPanel({
   view,
   onViewChange,
   onOpenMiner,
+  initialId,
 }: {
   apps: ForgeApp[];
   rows: WorkerRow[];
   view: HashrateView;
   onViewChange: (v: HashrateView) => void;
   onOpenMiner: (key: string) => void;
+  // The node to show on arrival, when opened from the Overview tab.
+  initialId?: string | null;
 }) {
   // Redraw each second so "last share" counts up between polls.
   const [, setTick] = useState(0);
@@ -755,7 +792,7 @@ export function NodesPanel({
     fetchMeshSettings().then((st) => {
       const n = parseSort(st?.nodes_sort, ["name", "hashrate", "miners", "status"] as const);
       if (n && !nodesChosen.current) setNodesSort(n);
-      const m = parseSort(st?.node_miners_sort, ["name", "hashrate", "best"] as const);
+      const m = parseSort(st?.node_miners_sort, ["name", "connection", "hashrate", "difficulty", "best"] as const);
       if (m && !minersChosen.current) setMinersSort(m);
     });
   }, []);
@@ -789,7 +826,7 @@ export function NodesPanel({
 
   // The first online node is shown until the user picks one. Stacked, a node's
   // detail opens under it, so there nothing is open until one is picked.
-  const [picked, setPicked] = useState<string | null>(null);
+  const [picked, setPicked] = useState<string | null>(initialId ?? null);
   const selectedId = picked ?? (wide ? ordered[0]?.id ?? null : null);
   const selected = ordered.find((a) => a.id === selectedId) ?? null;
   const pick = (id: string) => setPicked((p) => (!wide && p === id ? "" : id));

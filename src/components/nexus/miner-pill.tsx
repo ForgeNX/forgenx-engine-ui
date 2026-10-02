@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { Unplug } from "lucide-react";
 import { AnimatedBeam } from "./animated-beam";
 import { RejectionList } from "./rejection-list";
-import { compactNumber, formatHashrate } from "./format";
+import { bestShare, compactNumber, formatHashrate } from "./format";
 import { FLEET_AUTO, parseAllocation, type MeshMiner } from "@/lib/forge-api";
 import type { ForgeApp } from "./nexus-data";
 
@@ -193,7 +193,7 @@ export function MinerPill({
               Difficulty (current): {compactNumber(miner.difficulty ?? 0)}
               {(miner.best_share ?? 0) > 0 && (
                 <>
-                  {"  -  "}Best share: <span className="text-neon-cyan">{compactNumber(miner.best_share ?? 0)}</span>
+                  {"  -  "}Best share: <span className="text-neon-cyan">{bestShare(miner.best_share ?? 0)}</span>
                 </>
               )}
               {(miner.next_difficulty ?? 0) > 0 && (

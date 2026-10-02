@@ -217,7 +217,7 @@ function fmtBlockTime(rfc: string): string {
 }
 
 // ── Mapping ─────────────────────────────────────────────────────────────────────
-function mapNode(s: CoinStatus, settings: CoinSettings | null): ForgeAppNode {
+function mapNode(s: CoinStatus, settings: CoinSettings | null, serverHost: string): ForgeAppNode {
   const n = s.node;
   const p = s.pool;
   const online = n?.rpcOnline ?? false;
@@ -225,7 +225,10 @@ function mapNode(s: CoinStatus, settings: CoinSettings | null): ForgeAppNode {
   const synced = n?.synced ?? false;
 
   // Build stratum URLs from the browser host + real ports (matches old UI).
-  const host = typeof window !== "undefined" ? window.location.hostname : "<host>";
+  // The server's own address, as saved in Mesh Settings, so the URLs are the
+  // ones a miner on the network should use; the browser's address is only a
+  // fallback, and through an SSH tunnel it is "localhost".
+  const host = serverHost || (typeof window !== "undefined" ? window.location.hostname : "<host>");
   const v1Port = settings?.stratum_port ?? s.stratum_port;
   const v2Port = settings?.sv2Port ?? 4333;
   const workerName = settings?.workerName?.trim() || "—";
@@ -299,7 +302,11 @@ async function fetchJSON<T>(url: string): Promise<T | null> {
 
 // fetchForgeApps: the main entry. Returns the live ForgeApp[] for the installed coins.
 export async function fetchForgeApps(): Promise<ForgeApp[]> {
-  const stats = await fetchJSON<EngineStats>("/api/engine/stats");
+  const [stats, meshSettings] = await Promise.all([
+    fetchJSON<EngineStats>("/api/engine/stats"),
+    fetchMeshSettings(),
+  ]);
+  const serverHost = meshSettings?.mesh_address?.trim() ?? "";
   const symbols = stats?.coins ? Object.keys(stats.coins) : [];
   if (symbols.length === 0) return [];
 
@@ -356,7 +363,7 @@ export async function fetchForgeApps(): Promise<ForgeApp[]> {
       coinId: meta.coinId,
       status: status ?? null,
       node: status
-        ? mapNode(status, settings)
+        ? mapNode(status, settings, serverHost)
         : {
             syncStatus: "Not installed",
             syncNote: "Install to begin syncing",
@@ -472,23 +479,33 @@ export const HISTORY_TRAILS: Record<string, string> = {
   "1d": "1d",
   "3d": "3d",
   "7d": "7d",
+  "1mo": "1mo",
+  "6mo": "6mo",
 };
 
 export type HistorySeries = {
   pool: number[]; // GH/s samples, oldest → newest
   network: number[];
+  difficulty: number[]; // the network difficulty at each sample
 };
 
 // fetchHistory: pool + network hashrate time-series for one coin over a trail window.
-export async function fetchHistory(coinId: string, trail: string): Promise<HistorySeries> {
+export async function fetchHistory(coinId: string, trail: string, view?: "live" | "avg"): Promise<HistorySeries> {
   const t = HISTORY_TRAILS[trail] ?? "6h";
-  const [pool, network] = await Promise.all([
-    fetchJSON<{ data: number[] }>(`/api/apps/${coinId}/history?metric=pool_hashrate_raw&trail=${t}`),
+  // With a view, the pool line is the node's total from the miners' own
+  // figures; an engine too old to keep it answers with the server-side figure.
+  const poolOf = async () =>
+    (view && (await fetchJSON<{ data: number[] }>(`/api/apps/${coinId}/history?metric=node_hashrate_${view}&trail=${t}`))) ||
+    fetchJSON<{ data: number[] }>(`/api/apps/${coinId}/history?metric=pool_hashrate_raw&trail=${t}`);
+  const [pool, network, difficulty] = await Promise.all([
+    poolOf(),
     fetchJSON<{ data: number[] }>(`/api/apps/${coinId}/history?metric=network_hashrate_raw&trail=${t}`),
+    fetchJSON<{ data: number[] }>(`/api/apps/${coinId}/history?metric=difficulty&trail=${t}`),
   ]);
   return {
     pool: pool?.data ?? [],
     network: network?.data ?? [],
+    difficulty: difficulty?.data ?? [],
   };
 }
 
@@ -670,6 +687,8 @@ export type MeshSettings = {
   miners_hashrate?: "live" | "avg"; // which of each miner's own figures the Miners tab shows
   nodes_sort?: string; // the Nodes tab's node list sort, e.g. "hashrate:desc"
   node_miners_sort?: string; // the sort of the miners on the selected node
+  chart_window?: string; // the Overview chart's time window, e.g. "6h"
+  chart_series?: string; // the chart's lines shown, e.g. "net,pool,diff", or "none"
   auto_name: boolean;
   name_prefix: string;
   next_name: string; // the name the next miner added to the mesh would be given
@@ -684,7 +703,7 @@ export async function fetchMeshSettings(): Promise<MeshSettings | null> {
 // Saves whichever settings are given. The engine validates the range and
 // answers with the reason when it rejects one, which is passed back as error.
 export async function saveMeshSettings(
-  patch: Partial<Pick<MeshSettings, "network_start" | "network_end" | "include_new" | "miner_sort" | "discovered_sort" | "miners_sort" | "miners_hashrate" | "nodes_sort" | "node_miners_sort" | "auto_name" | "name_prefix" | "mesh_address">>,
+  patch: Partial<Pick<MeshSettings, "network_start" | "network_end" | "include_new" | "miner_sort" | "discovered_sort" | "miners_sort" | "miners_hashrate" | "nodes_sort" | "node_miners_sort" | "chart_window" | "chart_series" | "auto_name" | "name_prefix" | "mesh_address">>,
 ): Promise<{ ok: boolean; settings?: MeshSettings; error?: string }> {
   try {
     const res = await fetch("/api/mesh/settings", {

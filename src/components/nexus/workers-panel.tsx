@@ -3,7 +3,7 @@ import { ChevronDown, Cpu, Search } from "lucide-react";
 import { AuroraText } from "./aurora-text";
 import { RejectionList } from "./rejection-list";
 import { ShineBorder } from "./shine-border";
-import { bestShareContext, compactNumber, formatHashrate, timeAgo } from "./format";
+import { bestShare, bestShareContext, compactNumber, formatHashrate, timeAgo } from "./format";
 import { bestOf, buildWorkerRows, formatUptime, realTime, type HashrateView, type WorkerRow } from "./workers-data";
 import { fetchMeshSettings, saveMeshSettings, type FoundMiner, type MeshStatus } from "@/lib/forge-api";
 import type { ForgeApp } from "./nexus-data";
@@ -21,7 +21,7 @@ import type { ForgeApp } from "./nexus-data";
 const SIDE_BY_SIDE_PX = 90 * 16;
 
 type Filter = "all" | "mesh" | "direct" | "offline";
-type SortKey = "name" | "hashrate" | "coin" | "device" | "best" | "last";
+type SortKey = "name" | "device" | "coin" | "hashrate" | "difficulty" | "best" | "shares" | "last" | "uptime";
 
 const FILTERS: { key: Filter; label: string }[] = [
   { key: "all", label: "All" },
@@ -32,11 +32,14 @@ const FILTERS: { key: Filter; label: string }[] = [
 
 const SORTS: { key: SortKey; label: string; first: "asc" | "desc" }[] = [
   { key: "name", label: "Name", first: "asc" },
-  { key: "hashrate", label: "Hashrate", first: "desc" },
-  { key: "coin", label: "Coin", first: "asc" },
   { key: "device", label: "Device", first: "asc" },
+  { key: "coin", label: "Node", first: "asc" },
+  { key: "hashrate", label: "Hashrate", first: "desc" },
+  { key: "difficulty", label: "Difficulty", first: "desc" },
   { key: "best", label: "Best share", first: "desc" },
+  { key: "shares", label: "Shares", first: "desc" },
   { key: "last", label: "Last share", first: "desc" },
+  { key: "uptime", label: "Uptime", first: "desc" },
 ];
 
 // Where a miner's hashrate figure came from, worded and coloured as on the Nexus
@@ -131,11 +134,15 @@ function sortRows(rows: WorkerRow[], key: SortKey, dir: "asc" | "desc"): WorkerR
     a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" });
   const cmp: Record<SortKey, (a: WorkerRow, b: WorkerRow) => number> = {
     name: byName,
-    hashrate: (a, b) => a.hashrate - b.hashrate,
-    coin: (a, b) => (a.coin ?? "~").localeCompare(b.coin ?? "~"),
     device: (a, b) => (a.model || "~").localeCompare(b.model || "~"),
+    coin: (a, b) => (a.coin ?? "~").localeCompare(b.coin ?? "~"),
+    hashrate: (a, b) => a.hashrate - b.hashrate,
+    difficulty: (a, b) => (a.active?.difficulty ?? 0) - (b.active?.difficulty ?? 0),
     best: (a, b) => bestOf(a).best - bestOf(b).best,
+    // Accepted shares this session, as the Shares column's first figure.
+    shares: (a, b) => (a.active?.valid_shares ?? 0) - (b.active?.valid_shares ?? 0),
     last: (a, b) => lastShareMs(a) - lastShareMs(b),
+    uptime: (a, b) => a.uptime - b.uptime,
   };
   // Offline miners sit at the bottom whatever the sort, and names break ties so
   // rows keep their places between polls.
@@ -147,7 +154,7 @@ function sortRows(rows: WorkerRow[], key: SortKey, dir: "asc" | "desc"): WorkerR
 
 function Stat({ label, value, sub, color }: { label: string; value: ReactNode; sub?: string; color?: string }) {
   return (
-    <div className="flex min-w-0 flex-col items-center justify-center rounded-lg border border-border/50 px-3 py-2 text-center">
+    <div className="flex min-w-0 flex-col items-center px-3 text-center">
       <span className="text-[0.6rem] tracking-[0.14em] text-foreground/90 uppercase">{label}</span>
       <span className="font-mono text-sm font-semibold" style={{ color: color ?? "var(--foreground)" }}>
         {value}
@@ -189,9 +196,10 @@ function Row({
     <div
       className="rounded-lg border transition"
       style={{
-        opacity: r.online ? 1 : 0.55,
         borderColor: selected ? "var(--neon-cyan)" : "color-mix(in oklab, var(--border) 50%, transparent)",
-        background: selected ? "color-mix(in oklab, var(--neon-cyan) 7%, transparent)" : undefined,
+        background: selected
+          ? "color-mix(in oklab, var(--neon-cyan) 7%, transparent)"
+          : "color-mix(in oklab, var(--secondary) 25%, transparent)",
       }}
     >
       <div
@@ -209,10 +217,10 @@ function Row({
             onSelect();
           }
         }}
-        className={`grid cursor-pointer grid-cols-2 gap-x-3 gap-y-1.5 px-3 py-2.5 font-mono text-[0.72rem] transition hover:bg-secondary/30 @4xl:items-center @4xl:gap-y-0 ${COLS}`}
+        className={`grid cursor-pointer grid-cols-2 gap-x-3 gap-y-1.5 px-3 py-2.5 font-mono text-[0.72rem] transition hover:bg-secondary/30 @4xl:items-center @4xl:gap-y-0 ${COLS} ${r.online ? "" : "[&>*:not(.keep-lit)]:opacity-55"}`}
       >
-        {/* Miner */}
-        <span className="col-span-2 flex min-w-0 items-center gap-2 @4xl:col-span-1">
+        {/* Miner. An offline miner's name fades, its status dot does not. */}
+        <span className="keep-lit col-span-2 flex min-w-0 items-center gap-2 @4xl:col-span-1">
           {!wide && (
             <ChevronDown
               className={`size-3.5 shrink-0 text-foreground/90 transition-transform ${selected ? "rotate-180" : ""}`}
@@ -226,11 +234,19 @@ function Row({
             }}
           />
           <span className="min-w-0">
-            <span className="font-display block truncate text-sm font-bold">{r.name}</span>
-            <span className="block truncate text-[0.65rem] text-foreground/90">
-              {r.model || "unknown device"}
-              {r.ip && ` · ${r.ip}`}
+            <span className="font-display block truncate text-sm font-bold" style={{ opacity: r.online ? 1 : 0.55 }}>
+              {r.name}
             </span>
+            {r.online ? (
+              <span className="block truncate text-[0.65rem] text-foreground/90">
+                {r.model || "unknown device"}
+                {r.ip && ` · ${r.ip}`}
+              </span>
+            ) : (
+              <span className="block truncate text-[0.65rem]" style={{ color: "#ff0080" }}>
+                Offline
+              </span>
+            )}
           </span>
         </span>
 
@@ -244,17 +260,22 @@ function Row({
           ) : (
             <span className="text-foreground/90">—</span>
           )}
-          <span
-            className="rounded border px-1 text-[0.58rem] font-semibold"
-            style={
-              r.viaMesh
-                ? { borderColor: "var(--neon-cyan)", color: "var(--neon-cyan)" }
-                : { borderColor: "var(--border)", color: "var(--foreground)" }
-            }
-          >
-            {r.viaMesh ? "Mesh" : "Direct"}
-          </span>
-          {w?.protocol && <span className="text-[0.6rem] text-foreground/90">{w.protocol.toUpperCase()}</span>}
+          {/* How it connects, while connected */}
+          {r.online && (
+            <>
+              <span
+                className="rounded border px-1 text-[0.58rem] font-semibold"
+                style={
+                  r.viaMesh
+                    ? { borderColor: "var(--neon-cyan)", color: "var(--neon-cyan)" }
+                    : { borderColor: "oklch(0.78 0.17 296)", color: "oklch(0.78 0.17 296)" }
+                }
+              >
+                {r.viaMesh ? "Mesh" : "Direct"}
+              </span>
+              {w?.protocol && <span className="text-[0.6rem] text-foreground/90">{w.protocol.toUpperCase()}</span>}
+            </>
+          )}
         </span>
 
         {/* Hashrate */}
@@ -286,7 +307,15 @@ function Row({
           <Label>Best share</Label>
           {best.best > 0 ? (
             <>
-              <span className="text-neon-cyan">{compactNumber(best.best)}</span>
+              <span className="text-neon-cyan">{bestShare(best.best)}</span>
+              {best.sym && (
+                <span
+                  className="font-semibold"
+                  style={{ color: apps.find((a) => a.id.toUpperCase() === best.sym)?.color ?? "var(--foreground)" }}
+                >
+                  {" "}[{best.sym}]
+                </span>
+              )}
               {bestShareContext(best.best, best.netDiff, best.height) && (
                 <span className="block text-[0.62rem] text-foreground/90">
                   {bestShareContext(best.best, best.netDiff, best.height)}
@@ -314,13 +343,13 @@ function Row({
           )}
         </span>
 
-        {/* Last share */}
-        <span>
+        {/* Last share, lit for an offline miner so "Last seen ..." stands out */}
+        <span className="keep-lit">
           <Label>Last share</Label>
           {r.online ? (
             w?.last_share ? lastShareAgo(w.last_share) : "—"
           ) : (
-            <span style={{ color: "#ff0080" }}>{r.lastSeen ? `offline, seen ${timeAgo(r.lastSeen)}` : "offline"}</span>
+            <span style={{ color: "#ff0080" }}>{r.lastSeen ? `Last seen ${timeAgo(r.lastSeen)}` : "Offline"}</span>
           )}
         </span>
 
@@ -408,24 +437,26 @@ function Detail({ r, apps }: { r: WorkerRow; apps: ForgeApp[] }) {
           {nodes.map((c) => {
             const app = apps.find((a) => a.id.toUpperCase() === c.sym);
             const live = c.worker.online !== false;
-            const state = !live ? "offline" : c.standby ? "standby" : "mining";
+            const state = !live ? "" : c.standby ? "standby" : "mining";
             return (
               <div key={c.sym} className="rounded-md border border-border/50 px-2.5 py-2">
                 <div className="flex items-baseline justify-between gap-2">
                   <span className="font-semibold" style={{ color: app?.color ?? "var(--foreground)" }}>
                     {app?.ticker ?? c.sym}
                   </span>
-                  <span
-                    className="text-[0.62rem]"
-                    style={{ color: state === "mining" ? "var(--neon-green)" : state === "offline" ? "#ff0080" : "var(--foreground)" }}
-                  >
-                    {state}
-                  </span>
+                  {state && (
+                    <span
+                      className="text-[0.62rem]"
+                      style={{ color: state === "mining" ? "var(--neon-green)" : "var(--foreground)" }}
+                    >
+                      {state}
+                    </span>
+                  )}
                 </div>
                 <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
                   <dt className="text-foreground/90">Best Share (session):</dt>
                   <dd className="text-neon-cyan">
-                    {(c.worker.best_session ?? 0) > 0 ? compactNumber(c.worker.best_session ?? 0) : "—"}
+                    {(c.worker.best_session ?? 0) > 0 ? bestShare(c.worker.best_session ?? 0) : "—"}
                   </dd>
                   {/* The share counts sit under their own heading, indented. */}
                   <dt className="col-span-2 mt-1 text-foreground/90">Shares</dt>
@@ -472,7 +503,7 @@ function Detail({ r, apps }: { r: WorkerRow; apps: ForgeApp[] }) {
           <>
             <dt className="text-foreground/90">Best this session:</dt>
             <dd>
-              <span className="text-neon-cyan">{compactNumber(best.best)}</span>
+              <span className="text-neon-cyan">{bestShare(best.best)}</span>
               {bestSession.best_session_height ? ` at height ${bestSession.best_session_height.toLocaleString()}` : ""}
               {realTime(bestSession.best_session_time) ? `, ${timeAgo(bestSession.best_session_time as string)}` : ""}
             </dd>
@@ -482,7 +513,7 @@ function Detail({ r, apps }: { r: WorkerRow; apps: ForgeApp[] }) {
           <>
             <dt className="text-foreground/90">Best all time:</dt>
             <dd>
-              <span className="text-neon-cyan">{compactNumber(allTime)}</span>
+              <span className="text-neon-cyan">{bestShare(allTime)}</span>
               {allTimeOn.worker.height_at_best ? ` at height ${allTimeOn.worker.height_at_best.toLocaleString()}` : ""}
               {realTime(allTimeOn.worker.time_at_best) ? `, ${timeAgo(allTimeOn.worker.time_at_best as string)}` : ""}
             </dd>
@@ -515,14 +546,26 @@ function Detail({ r, apps }: { r: WorkerRow; apps: ForgeApp[] }) {
 function DetailPanel({ r, apps }: { r: WorkerRow | null; apps: ForgeApp[] }) {
   if (!r) {
     return (
-      <aside className="panel-neon animate-rise sticky top-4 flex min-h-[200px] flex-col items-center justify-center self-start p-5 text-center">
+      <aside
+        className="panel-neon animate-rise sticky top-4 flex min-h-[200px] flex-col items-center justify-center self-start p-5 text-center"
+        style={{
+          background:
+            "linear-gradient(color-mix(in oklab, var(--secondary) 25%, transparent), color-mix(in oklab, var(--secondary) 25%, transparent)), var(--panel)",
+        }}
+      >
         <p className="text-xs font-semibold tracking-[0.26em] text-foreground uppercase">No miner selected</p>
         <p className="mt-2 text-sm text-foreground/90">Select a miner to see its detail across each node.</p>
       </aside>
     );
   }
   return (
-    <aside className="panel-neon animate-rise @container sticky top-4 flex max-h-[calc(100vh-2rem)] flex-col self-start overflow-y-auto p-5">
+    <aside
+      className="panel-neon animate-rise @container sticky top-4 flex max-h-[calc(100vh-2rem)] flex-col self-start overflow-y-auto p-5"
+      style={{
+        background:
+          "linear-gradient(color-mix(in oklab, var(--secondary) 25%, transparent), color-mix(in oklab, var(--secondary) 25%, transparent)), var(--panel)",
+      }}
+    >
       <header className="flex items-center gap-2.5">
         <span
           className="size-1.5 shrink-0 rounded-full"
@@ -533,11 +576,16 @@ function DetailPanel({ r, apps }: { r: WorkerRow | null; apps: ForgeApp[] }) {
         />
         <span className="min-w-0">
           <span className="font-display block truncate text-sm font-bold">{r.name}</span>
-          <span className="block truncate font-mono text-[0.65rem] text-foreground/90">
-            {r.model || "unknown device"}
-            {r.ip && ` · ${r.ip}`}
-            {!r.online && " · offline"}
-          </span>
+          {r.online ? (
+            <span className="block truncate font-mono text-[0.65rem] text-foreground/90">
+              {r.model || "unknown device"}
+              {r.ip && ` · ${r.ip}`}
+            </span>
+          ) : (
+            <span className="block truncate font-mono text-[0.65rem]" style={{ color: "#ff0080" }}>
+              Offline{r.lastSeen ? ` · Last seen ${timeAgo(r.lastSeen)}` : ""}
+            </span>
+          )}
         </span>
       </header>
       <div className="mt-4">
@@ -645,7 +693,14 @@ export function WorkersPanel({
 
   return (
     <div ref={wrapRef} className="mx-auto flex w-full max-w-[118.5rem] flex-col gap-4">
-      <section className="panel-neon animate-rise @container flex flex-col p-5">
+      <section
+        className="panel-neon animate-rise @container flex flex-col p-5"
+        style={{
+          // The Mesh Overview's background: its 25% tint laid over the panel colour.
+          background:
+            "linear-gradient(color-mix(in oklab, var(--secondary) 25%, transparent), color-mix(in oklab, var(--secondary) 25%, transparent)), var(--panel)",
+        }}
+      >
         {/* The same moving beam as the Mesh Overview on the Nexus tab. */}
         <ShineBorder
           borderWidth={1.5}
@@ -654,10 +709,10 @@ export function WorkersPanel({
         />
         <header className="flex items-center gap-3">
           <Cpu className="size-4 text-neon-cyan" />
-          <h2 className="text-xs font-semibold tracking-[0.26em] text-neon-cyan uppercase">Miners</h2>
+          <h2 className="text-xs font-semibold tracking-[0.26em] text-white uppercase">Miners</h2>
         </header>
 
-        <div className="mt-4 grid grid-cols-2 gap-2 @xl:grid-cols-3 @4xl:grid-cols-6">
+        <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 @xl:grid-cols-3 @4xl:grid-cols-6">
           <Stat label="Online" value={String(summary.online)} color="var(--neon-green)" />
           <Stat
             label="Offline"
@@ -674,13 +729,13 @@ export function WorkersPanel({
           />
           <Stat
             label="Best share (session)"
-            value={summary.bestSession > 0 ? compactNumber(summary.bestSession) : "—"}
+            value={summary.bestSession > 0 ? bestShare(summary.bestSession) : "—"}
             sub={summary.bestSessionBy ? `by ${summary.bestSessionBy}` : undefined}
             color="var(--neon-cyan)"
           />
           <Stat
             label="Best share (all time)"
-            value={summary.bestAllTime > 0 ? compactNumber(summary.bestAllTime) : "—"}
+            value={summary.bestAllTime > 0 ? bestShare(summary.bestAllTime) : "—"}
             sub={summary.bestAllTimeBy ? `by ${summary.bestAllTimeBy}` : undefined}
             color="var(--neon-cyan)"
           />

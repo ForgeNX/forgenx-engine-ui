@@ -8,10 +8,13 @@ export function NodeStatus({
   apps,
   selectedId,
   onSelect,
+  onViewNode,
 }: {
   apps: ForgeApp[];
   selectedId: string;
   onSelect: (id: string) => void;
+  // Opens the Nodes tab with this node shown.
+  onViewNode?: (id: string) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<HTMLDivElement>(null);
@@ -132,10 +135,11 @@ export function NodeStatus({
 
       <button
         type="button"
-        className="group mt-5 flex items-center justify-center gap-2 rounded-xl border border-border/70 py-2.5 text-xs font-semibold tracking-[0.18em] text-muted-foreground uppercase transition-colors duration-300 hover:border-neon-cyan hover:text-neon-cyan"
+        onClick={() => onViewNode?.(selectedId)}
+        className="group mt-5 flex items-center justify-center gap-2 rounded-xl border border-border/70 py-2.5 text-xs font-semibold tracking-[0.18em] text-neon-cyan uppercase transition-colors duration-300 hover:border-neon-cyan"
       >
         <Boxes className="size-3.5" />
-        View all nodes
+        View full node information
         <ArrowRight className="size-3.5 transition-transform duration-300 group-hover:translate-x-1" />
       </button>
     </section>

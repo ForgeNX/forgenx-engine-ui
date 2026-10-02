@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { fetchHistory, coinIdForSymbol, HISTORY_TRAILS } from "@/lib/forge-api";
+import { ChartLine } from "lucide-react";
+
+import { fetchHistory, fetchMeshSettings, saveMeshSettings, coinIdForSymbol, HISTORY_TRAILS } from "@/lib/forge-api";
 import type { ForgeApp } from "./nexus-data";
+import { compactNumber } from "./format";
 
 const WIDTH = 900;
 const HEIGHT = 220;
@@ -16,7 +19,12 @@ const TRAIL_SECONDS: Record<string, number> = {
   "1d": 24 * 3600,
   "3d": 3 * 24 * 3600,
   "7d": 7 * 24 * 3600,
+  "1mo": 30 * 24 * 3600,
+  "6mo": 182 * 24 * 3600,
 };
+
+// The chart's lines: network hashrate, pool hashrate and network difficulty.
+const ALL_SERIES = ["net", "pool", "diff"];
 
 // Pool history samples are TH/s; network history samples are raw H/s.
 const POOL_TO_HS = 1e12;
@@ -33,6 +41,14 @@ function fmtHsFromBase(h: number): string {
     i++;
   }
   return `${v.toFixed(2)} ${units[i]}`;
+}
+
+// A difficulty with a space before its unit: "551.05 G".
+function fmtDiff(d: number): string {
+  if (!d || d <= 0) return "—";
+  const s = compactNumber(d);
+  const unit = s.slice(-1);
+  return "KMGTP".includes(unit) ? `${s.slice(0, -1)} ${unit}` : s;
 }
 
 function buildPath(values: number[], max: number) {
@@ -62,26 +78,48 @@ function axisLabels(trail: string, count = 6): string[] {
   return out;
 }
 
-export function HashrateChart({ app }: { app: ForgeApp | null }) {
-  const [window_, setWindowState] = useState<string>(() => {
-    try {
-      const saved = localStorage.getItem("forgenx.chart.window");
-      if (saved && WINDOWS.includes(saved)) return saved;
-    } catch {
-      /* localStorage unavailable */
-    }
-    return "6h";
-  });
+export function HashrateChart({
+  app,
+  poolThs,
+  view,
+}: {
+  app: ForgeApp | null;
+  // The node's hashrate now, TH/s, as the Miners and Nodes tabs count it.
+  poolThs?: number;
+  view?: "live" | "avg";
+}) {
+  // The time window and the lines shown, saved on the engine like the other
+  // Nexus settings. Each is marked once the user picks, so a saved value
+  // arriving late does not undo the pick.
+  const [window_, setWindowState] = useState<string>("6h");
+  const [visible, setVisible] = useState<Set<string>>(() => new Set(ALL_SERIES));
+  const chosen = useRef({ window: false, series: false });
+  useEffect(() => {
+    fetchMeshSettings().then((st) => {
+      if (!chosen.current.window && st?.chart_window && WINDOWS.includes(st.chart_window)) {
+        setWindowState(st.chart_window);
+      }
+      if (!chosen.current.series && st?.chart_series) {
+        setVisible(new Set(st.chart_series === "none" ? [] : st.chart_series.split(",").filter((id) => ALL_SERIES.includes(id))));
+      }
+    });
+  }, []);
   const setWindow = (w: string) => {
+    chosen.current.window = true;
     setWindowState(w);
-    try {
-      localStorage.setItem("forgenx.chart.window", w);
-    } catch {
-      /* ignore */
-    }
+    saveMeshSettings({ chart_window: w });
+  };
+  const toggleSeries = (id: string) => {
+    const next = new Set(visible);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    chosen.current.series = true;
+    setVisible(next);
+    saveMeshSettings({ chart_series: next.size ? ALL_SERIES.filter((s) => next.has(s)).join(",") : "none" });
   };
   const [pool, setPool] = useState<number[]>([]);
   const [network, setNetwork] = useState<number[]>([]);
+  const [difficulty, setDifficulty] = useState<number[]>([]);
   const [hover, setHover] = useState<number | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
 
@@ -89,17 +127,18 @@ export function HashrateChart({ app }: { app: ForgeApp | null }) {
     if (!app) return;
     let cancelled = false;
     const coinId = coinIdForSymbol(app.id);
-    fetchHistory(coinId, window_).then((h) => {
+    fetchHistory(coinId, window_, view).then((h) => {
       if (!cancelled) {
         setPool(h.pool);
         setNetwork(h.network);
+        setDifficulty(h.difficulty);
         setHover(null);
       }
     });
     return () => {
       cancelled = true;
     };
-  }, [app, window_]);
+  }, [app, window_, view]);
 
   // Convert to base H/s for both series.
   const poolHs = useMemo(() => pool.map((v) => v * POOL_TO_HS), [pool]);
@@ -107,14 +146,18 @@ export function HashrateChart({ app }: { app: ForgeApp | null }) {
 
   const poolMax = Math.max(...poolHs, 1);
   const netMax = Math.max(...netHs, 1);
+  const diffMax = Math.max(...difficulty, 1);
 
+  // Each line is drawn against its own peak, so all three share the chart's
+  // height; the figures beside it give the real values.
   const series = [
-    { id: "net", label: "Network", color: "var(--neon-pink)", data: netHs, max: netMax },
-    { id: "pool", label: `Pool (${app?.ticker ?? "—"})`, color: "var(--neon-cyan)", data: poolHs, max: poolMax },
+    { id: "net", label: "Network", color: "var(--neon-pink)", data: netHs, max: netMax, fmt: fmtHsFromBase },
+    { id: "pool", label: `Pool (${app?.ticker ?? "—"})`, color: "var(--neon-gold)", data: poolHs, max: poolMax, fmt: fmtHsFromBase },
+    { id: "diff", label: "Network difficulty", color: "var(--neon-cyan)", data: difficulty, max: diffMax, fmt: fmtDiff },
   ];
 
   const labels = axisLabels(window_);
-  const pointCount = Math.max(poolHs.length, netHs.length);
+  const pointCount = Math.max(poolHs.length, netHs.length, difficulty.length);
 
   // Map a mouse X position to the nearest data index.
   const onMove = (e: React.MouseEvent<SVGSVGElement>) => {
@@ -131,7 +174,10 @@ export function HashrateChart({ app }: { app: ForgeApp | null }) {
   return (
     <section className="panel-neon animate-rise p-5" style={{ animationDelay: "200ms" }}>
       <header className="flex flex-wrap items-center gap-4">
-        <h2 className="text-xs font-semibold tracking-[0.26em] text-foreground/90 uppercase">Hashrate over time</h2>
+        <h2 className="flex items-center gap-2 text-xs font-semibold tracking-[0.26em] text-neon-cyan uppercase">
+          <ChartLine className="size-4" />
+          Hashrate over time
+        </h2>
         <div className="flex gap-1 rounded-xl border border-border/70 bg-secondary/40 p-1">
           {WINDOWS.map((w) => {
             const active = w === window_;
@@ -156,30 +202,50 @@ export function HashrateChart({ app }: { app: ForgeApp | null }) {
 
       <div className="mt-5 grid gap-5 lg:grid-cols-[150px_minmax(0,1fr)]">
         <ul className="space-y-4">
+          {app && (
+            <li className="font-display text-base font-bold" style={{ color: app.color }}>
+              {app.chain}
+            </li>
+          )}
           {series.map((s) => {
             const now = s.data.length ? s.data[s.data.length - 1] : 0;
             // On hover show the point value; otherwise show the current headline.
             // For the pool series the headline is the app's 15m hashrate (matches
             // the Distribution panel exactly); network uses its latest history point.
             const headline =
-              s.id === "pool" && app ? app.hashrate : fmtHsFromBase(now);
-            const shown =
-              hover != null && s.data[hover] != null ? fmtHsFromBase(s.data[hover]) : headline;
+              s.id === "pool" && poolThs !== undefined ? fmtHsFromBase(poolThs * POOL_TO_HS) : s.fmt(now);
+            const shown = hover != null && s.data[hover] != null ? s.fmt(s.data[hover]) : headline;
+            // Click a line's name to show or hide it.
+            const on = visible.has(s.id);
             return (
               <li key={s.id}>
-                <p className="flex items-center gap-2 text-xs text-white">
-                  <span
-                    className="size-2 rounded-full"
-                    style={{ background: s.color, boxShadow: `0 0 10px ${s.color}`, animation: "pulse-glow 2.4s ease-in-out infinite" }}
-                  />
-                  {s.label}
-                </p>
-                <p className="font-display mt-1 text-xl font-bold tabular-nums" style={{ color: s.color }}>
-                  {shown}
-                </p>
+                <button
+                  type="button"
+                  onClick={() => toggleSeries(s.id)}
+                  aria-pressed={on}
+                  className="text-left transition-opacity duration-300"
+                  style={{ opacity: on ? 1 : 0.4 }}
+                >
+                  <span className="flex items-center gap-2 text-xs text-white">
+                    <span
+                      className="size-2 rounded-full border"
+                      style={{
+                        borderColor: s.color,
+                        background: on ? s.color : "transparent",
+                        boxShadow: on ? `0 0 10px ${s.color}` : undefined,
+                        animation: on ? "pulse-glow 2.4s ease-in-out infinite" : undefined,
+                      }}
+                    />
+                    {s.label}
+                  </span>
+                  <span className="font-display mt-1 block text-xl font-bold tabular-nums" style={{ color: s.color }}>
+                    {shown}
+                  </span>
+                </button>
               </li>
             );
           })}
+          <li className="text-[0.6rem] tracking-wider text-foreground/75">Click a name to show or hide its line</li>
           {hover != null ? (
             <li className="text-[0.6rem] tracking-wider text-muted-foreground">
               at {labels[Math.round((hover / Math.max(1, pointCount - 1)) * (labels.length - 1))]}
@@ -192,14 +258,14 @@ export function HashrateChart({ app }: { app: ForgeApp | null }) {
             ref={svgRef}
             viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
             preserveAspectRatio="none"
-            className="h-[220px] w-full rounded-lg border border-border/50 bg-secondary/15"
+            className="h-[220px] w-full rounded-lg border border-border/50 bg-black/10"
             onMouseMove={onMove}
             onMouseLeave={() => setHover(null)}
           >
             <defs>
               {series.map((s) => (
                 <linearGradient key={s.id} id={`fill-${s.id}`} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={s.color} stopOpacity="0.06" />
+                  <stop offset="0%" stopColor={s.color} stopOpacity="0.03" />
                   <stop offset="100%" stopColor={s.color} stopOpacity="0" />
                 </linearGradient>
               ))}
@@ -207,7 +273,7 @@ export function HashrateChart({ app }: { app: ForgeApp | null }) {
             {[0, 1, 2, 3, 4].map((i) => (
               <line key={i} x1="0" x2={WIDTH} y1={(HEIGHT / 4) * i} y2={(HEIGHT / 4) * i} stroke="var(--grid-line)" strokeWidth="1" />
             ))}
-            {series.map((s) => {
+            {series.filter((s) => visible.has(s.id)).map((s) => {
               const line = buildPath(s.data, s.max);
               if (!line) return null;
               return (

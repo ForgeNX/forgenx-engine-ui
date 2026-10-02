@@ -1,7 +1,7 @@
 import { Activity } from "lucide-react";
 import { ShineBorder } from "./shine-border";
 import { AuroraText } from "./aurora-text";
-import { compactNumber, formatHashrate } from "./format";
+import { bestShare, formatHashrate } from "./format";
 import type { MeshOverview } from "@/lib/forge-api";
 import type { ForgeApp } from "./nexus-data";
 
@@ -55,7 +55,7 @@ export function MeshOverviewPill({ apps, overview }: { apps: ForgeApp[]; overvie
         <Stat label="Miners" value={String(overview.connected)} />
         <Stat label="Hashrate" value={formatHashrate(overview.total_ths)} color="var(--neon-cyan)" />
         <Stat label="Peak Hashrate" value={formatHashrate(overview.peak_ths)} />
-        <Stat label="Best share" value={compactNumber(overview.best_share)} color="var(--neon-cyan)" />
+        <Stat label="Best share" value={bestShare(overview.best_share)} color="var(--neon-cyan)" />
         <Stat
           label="Blocks Found"
           value={String(overview.blocks)}
@@ -121,7 +121,7 @@ export function MeshOverviewPill({ apps, overview }: { apps: ForgeApp[]; overvie
                   <span className="whitespace-pre-wrap">
                     Best share:{" "}
                     <span className="text-neon-cyan">
-                      {compactNumber(n.best_share)}
+                      {bestShare(n.best_share)}
                       {n.best_share_worker && ` by ${n.best_share_worker}`}
                     </span>
                   </span>
