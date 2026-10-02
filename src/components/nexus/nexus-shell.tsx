@@ -19,6 +19,16 @@ import { WorkersPanel } from "./workers-panel";
 import { NodesPanel } from "./nodes-panel";
 import { StatPills } from "./stat-pills";
 import { ShineBorder } from "./shine-border";
+
+// True when the page is shown inside another page (ForgeNX's engine window).
+// Reading window.top from a different origin can throw, which also means embedded.
+const EMBEDDED = (() => {
+  try {
+    return window.self !== window.top;
+  } catch {
+    return true;
+  }
+})();
 import { NEXUS_TABS, type NexusTab } from "./nexus-data";
 import { useForgeApps } from "@/hooks/use-forge-apps";
 import { useEngineInfo, useEngineStatus, useCoinSV2List } from "@/hooks/use-engine-meta";
@@ -112,12 +122,16 @@ export function NexusShell() {
     // but is not a scroll container: a sticky panel inside (the Miners detail)
     // then holds its place as the page scrolls.
     <div className="panel-neon relative m-2 flex min-h-[calc(100vh-1rem)] flex-col md:m-4" style={{ overflow: "clip" }}>
-      {/* The moving multicolour border, as on the ForgeNX engine widget. */}
-      <ShineBorder
-        borderWidth={1.5}
-        duration={14}
-        shineColor={["var(--neon-cyan)", "var(--neon-pink)", "var(--neon-gold)"]}
-      />
+      {/* The moving multicolour border, as on the ForgeNX engine widget. Only
+          when the page is the whole window: inside ForgeNX's engine window, the
+          window draws it on its own outer edge instead. */}
+      {!EMBEDDED && (
+        <ShineBorder
+          borderWidth={1.5}
+          duration={14}
+          shineColor={["var(--neon-cyan)", "var(--neon-pink)", "var(--neon-gold)"]}
+        />
+      )}
       <span
         className="pointer-events-none absolute inset-x-0 top-0 h-px"
         style={{
