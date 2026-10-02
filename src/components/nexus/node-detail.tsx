@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Box, Boxes, Clock, Check, Copy, Droplet, Link2, Lock, Star, User } from "lucide-react";
 
 import { ShineBorder } from "./shine-border";
+import { useHoverTip } from "./hover-tip";
 import { AuroraText } from "./aurora-text";
 import type { ForgeApp } from "./nexus-data";
 
@@ -68,10 +69,12 @@ export function NodeDetail({ app }: { app: ForgeApp }) {
   };
   const n = app.node;
   const live = app.installed;
+  const tip = useHoverTip();
 
   return (
     <section key={app.id} className="panel-neon animate-rise flex flex-col p-5">
       <ShineBorder borderWidth={1.5} duration={14} shineColor={[app.color, "var(--neon-cyan)", app.color]} />
+      {tip.node}
       <header className="flex flex-wrap items-center gap-3">
         <span
           className="font-display flex size-14 items-center justify-center overflow-hidden rounded-md text-lg font-bold"
@@ -114,7 +117,7 @@ export function NodeDetail({ app }: { app: ForgeApp }) {
         <MiniPanel delay={40}>
           <Label>Sync status</Label>
           <div className="mt-2.5 flex items-center gap-4">
-            <span className="relative flex size-20 items-center justify-center">
+            <span className="relative flex size-20 shrink-0 items-center justify-center">
               <svg viewBox="0 0 36 36" className="absolute inset-0 -rotate-90">
                 <circle cx="18" cy="18" r="15.5" fill="none" stroke="oklch(0.16 0.02 265)" strokeWidth="3" />
                 <circle
@@ -141,9 +144,9 @@ export function NodeDetail({ app }: { app: ForgeApp }) {
                 {n.syncPercent}%
               </span>
             </span>
-            <div>
+            <div className="min-w-0">
               <p className="text-lg font-semibold">{n.syncStatus}</p>
-              <p className="text-sm text-muted-foreground">{n.syncNote}</p>
+              <p className="text-sm text-foreground/75">{n.syncNote}</p>
             </div>
           </div>
         </MiniPanel>
@@ -222,15 +225,15 @@ export function NodeDetail({ app }: { app: ForgeApp }) {
             { key: "v1", icon: Link2, title: "Stratum V1", value: n.stratumV1, subtitle: n.stratumV1Subtitle, color: "var(--neon-cyan)" },
             { key: "v2", icon: Lock, title: "Stratum V2", value: n.stratumV2, subtitle: n.stratumV2Subtitle, color: "var(--neon-violet)" },
           ].map((item) => (
-            <div key={item.title} className="group min-w-0">
+            <div key={item.title} className="min-w-0">
               <p className="flex items-center gap-1.5 text-[0.6rem] tracking-[0.18em] text-white uppercase">
                 <item.icon className="size-3" style={{ color: item.color }} /> {item.title}
               </p>
               <button
                 type="button"
                 onClick={() => copy(item.key, item.value)}
-                className="mt-1.5 flex w-full items-start gap-1.5 text-left font-mono text-[0.78rem] break-all text-foreground/90 transition-colors hover:text-foreground"
-                title="Click to copy"
+                className="group/url mt-1.5 flex w-full items-start gap-1.5 text-left font-mono text-[0.78rem] break-all text-foreground/90 transition-colors hover:text-foreground"
+                {...tip.bind("Click to copy")}
               >
                 {item.value}
                 {copiedKey === item.key ? (
@@ -238,20 +241,23 @@ export function NodeDetail({ app }: { app: ForgeApp }) {
                     <Check className="size-3" /> Copied
                   </span>
                 ) : (
-                  <Copy className="mt-0.5 size-3 shrink-0 text-muted-foreground opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                  <Copy className="mt-0.5 size-3 shrink-0 text-muted-foreground opacity-0 transition-opacity duration-300 group-hover/url:opacity-100" />
                 )}
               </button>
               {item.subtitle ? (
                 <button
                   type="button"
                   onClick={() => copy(`${item.key}-sub`, item.subtitle.replace(/^Authority:\s*/, ""))}
-                  className="mt-1 flex items-start gap-1 text-left font-mono text-[0.6rem] break-all text-muted-foreground transition-colors hover:text-foreground/80"
-                  title="Click to copy"
+                  className="group/sub mt-1 flex items-start gap-1 text-left font-mono text-[0.6rem] break-all text-foreground/75 transition-colors hover:text-foreground/90"
+                  {...tip.bind("Click to copy")}
                 >
+                  {item.subtitle}
                   {copiedKey === `${item.key}-sub` ? (
-                    <span className="text-neon-green">Copied</span>
+                    <span className="flex shrink-0 items-center gap-0.5 text-neon-green">
+                      <Check className="size-2.5" /> Copied
+                    </span>
                   ) : (
-                    item.subtitle
+                    <Copy className="mt-px size-2.5 shrink-0 text-muted-foreground opacity-0 transition-opacity duration-300 group-hover/sub:opacity-100" />
                   )}
                 </button>
               ) : null}
@@ -265,7 +271,7 @@ export function NodeDetail({ app }: { app: ForgeApp }) {
               type="button"
               onClick={() => copy("worker", n.fullWorkerName)}
               className="group/w mt-1.5 flex w-full items-start justify-start gap-1 text-left font-mono text-[0.78rem] break-all text-foreground/90 transition-colors hover:text-foreground"
-              title="Click to copy"
+              {...tip.bind("Click to copy")}
             >
               {n.fullWorkerName}
               {copiedKey === "worker" ? (
@@ -283,7 +289,7 @@ export function NodeDetail({ app }: { app: ForgeApp }) {
       <div className="mt-3 grid gap-3 sm:grid-cols-3">
         {[
           { icon: Droplet, label: "Network difficulty", value: n.networkDifficulty, color: "var(--neon-cyan)" },
-          { icon: Droplet, label: "Network hashrate", value: n.networkHashrate, color: "var(--neon-violet)" },
+          { icon: Droplet, label: "Network hashrate", value: n.networkHashrate, color: "var(--neon-pink)" },
           { icon: Star, label: "Best session difficulty", value: n.bestSessionDifficulty, color: "var(--neon-gold)" },
         ].map((tile, i) => (
           <MiniPanel key={tile.label} delay={280 + i * 50}>

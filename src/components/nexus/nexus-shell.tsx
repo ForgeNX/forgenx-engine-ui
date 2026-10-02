@@ -18,7 +18,6 @@ import { SettingsPanel } from "./settings-panel";
 import { WorkersPanel } from "./workers-panel";
 import { NodesPanel } from "./nodes-panel";
 import { StatPills } from "./stat-pills";
-import { ShineBorder } from "./shine-border";
 
 // True when the page is shown inside another page (ForgeNX's engine window).
 // Reading window.top from a different origin can throw, which also means embedded.
@@ -121,17 +120,21 @@ export function NexusShell() {
     // overflow: clip rather than the panel's hidden, so it still clips its corners
     // but is not a scroll container: a sticky panel inside (the Miners detail)
     // then holds its place as the page scrolls.
-    <div className="panel-neon relative m-2 flex min-h-[calc(100vh-1rem)] flex-col md:m-4" style={{ overflow: "clip" }}>
-      {/* The moving multicolour border, as on the ForgeNX engine widget. Only
-          when the page is the whole window: inside ForgeNX's engine window, the
-          window draws it on its own outer edge instead. */}
-      {!EMBEDDED && (
-        <ShineBorder
-          borderWidth={1.5}
-          duration={14}
-          shineColor={["var(--neon-cyan)", "var(--neon-pink)", "var(--neon-gold)"]}
-        />
-      )}
+    <div
+      className="panel-neon relative m-2 flex min-h-[calc(100vh-1rem)] flex-col md:m-4"
+      style={{
+        overflow: "clip",
+        // A steady neon edge, only when the page is the whole window: inside
+        // ForgeNX's engine window, the window draws it on its own outer edge.
+        ...(EMBEDDED
+          ? {}
+          : {
+              border: "1.5px solid color-mix(in oklab, var(--neon-cyan) 75%, transparent)",
+              boxShadow:
+                "0 24px 60px -30px oklch(0.05 0 0 / 0.9), 0 0 16px -4px color-mix(in oklab, var(--neon-cyan) 70%, transparent)",
+            }),
+      }}
+    >
       <span
         className="pointer-events-none absolute inset-x-0 top-0 h-px"
         style={{
