@@ -50,7 +50,7 @@ export function NodeStatus({
         {/* Middle: ForgeNX Engine hub node */}
         <div className="ml-8 flex flex-col justify-center">
           <div ref={engineRef} className="z-10 flex items-center gap-2">
-            <span className="flex size-[52px] shrink-0 items-center justify-center overflow-hidden">
+            <span className="flex size-14 shrink-0 items-center justify-center overflow-hidden">
               <img src="/Engine.png" alt="ForgeNX Engine" className="size-full object-contain" />
             </span>
             <span className="font-display text-left text-sm leading-tight font-semibold tracking-wide text-foreground">
@@ -78,7 +78,7 @@ export function NodeStatus({
                 }}
               >
                 <span
-                  className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-md text-sm font-bold transition-transform duration-300 group-hover:scale-110"
+                  className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-md text-sm font-bold transition-transform duration-300 group-hover:scale-110"
                   style={{ color: app.color }}
                 >
                   {app.icon ? (
