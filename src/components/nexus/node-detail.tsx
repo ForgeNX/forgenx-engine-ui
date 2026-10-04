@@ -92,25 +92,6 @@ export function NodeDetail({ app }: { app: ForgeApp }) {
           </h2>
           <p className="text-xs text-white">{app.chain}</p>
         </div>
-        <span
-          className="ml-auto flex items-center gap-2 rounded-full border px-3 py-1 text-[0.68rem] font-semibold tracking-[0.16em] uppercase"
-          style={{
-            color: live ? "var(--neon-green)" : "var(--muted-foreground)",
-            borderColor: live
-              ? "color-mix(in oklab, var(--neon-green) 55%, transparent)"
-              : "var(--border)",
-            boxShadow: live ? "0 0 16px -4px var(--neon-green)" : undefined,
-          }}
-        >
-          <span
-            className="size-1.5 rounded-full"
-            style={{
-              background: live ? "var(--neon-green)" : "var(--muted-foreground)",
-              animation: live ? "pulse-glow 2.2s ease-in-out infinite" : undefined,
-            }}
-          />
-          {live ? "Online" : "Offline"}
-        </span>
       </header>
 
       <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
@@ -154,7 +135,8 @@ export function NodeDetail({ app }: { app: ForgeApp }) {
         <MiniPanel delay={90}>
           <Label>Readiness checks</Label>
           <ul className="mt-2.5 grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2">
-            {n.checks.map((check, i) => (
+            {/* The node's online / offline status leads the checks. */}
+            {[{ label: live ? "Node online" : "Node offline", ok: live }, ...n.checks].map((check, i) => (
               <li
                 key={check.label}
                 className="flex items-center gap-1.5 text-[0.72rem] font-semibold tracking-wider"
