@@ -558,7 +558,9 @@ export async function fetchEngineUptime(): Promise<number | null> {
 // POST /api/apps/forgenx-engine/{action}. Returns true on success.
 export async function engineAction(action: "start" | "stop" | "restart"): Promise<boolean> {
   try {
-    const res = await fetch(`/api/apps/forgenx-engine/${action}`, { method: "POST" });
+    // X-ForgeNX-UI: forgenxd only takes changes from a logged-in browser with
+    // this header (which a page belonging to some other app can't send here).
+    const res = await fetch(`/api/apps/forgenx-engine/${action}`, { method: "POST", headers: { "X-ForgeNX-UI": "1" } });
     if (!res.ok) return false;
     const data = await res.json().catch(() => ({}));
     return Boolean(data?.success ?? data?.status ?? true);
