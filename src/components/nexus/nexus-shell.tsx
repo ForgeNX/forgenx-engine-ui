@@ -178,17 +178,24 @@ export function NexusShell() {
                 type="button"
                 onClick={() => setTab(item)}
                 aria-current={active ? "page" : undefined}
-                className="relative flex items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-semibold whitespace-nowrap transition-all duration-300 hover:text-foreground"
+                className="group relative flex items-center gap-2 px-3.5 pt-2 pb-2.5 text-sm font-semibold whitespace-nowrap transition-colors duration-300 hover:text-foreground"
                 style={{
                   color: active ? "var(--neon-cyan)" : "var(--foreground)",
-                  background: active ? "color-mix(in oklab, var(--neon-cyan) 14%, transparent)" : undefined,
-                  border: `1px solid ${active ? "color-mix(in oklab, var(--neon-cyan) 55%, transparent)" : "transparent"}`,
-                  boxShadow: active ? "0 0 22px -8px var(--neon-cyan)" : undefined,
                   animation: `rise 0.5s cubic-bezier(0.22,1,0.36,1) ${i * 45}ms both`,
                 }}
               >
                 <Icon className="size-4" />
                 {item}
+                {/* The open section is underlined (a faint line on hover). */}
+                <span
+                  aria-hidden="true"
+                  className={`absolute inset-x-3 bottom-0 h-0.5 rounded-full transition-opacity duration-300 ${active ? "" : "opacity-0 group-hover:opacity-100"}`}
+                  style={
+                    active
+                      ? { background: "var(--neon-cyan)", boxShadow: "0 0 10px var(--neon-cyan)" }
+                      : { background: "color-mix(in oklab, var(--muted-foreground) 35%, transparent)" }
+                  }
+                />
               </button>
             );
           })}
