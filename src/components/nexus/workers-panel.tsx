@@ -3,7 +3,7 @@ import { ChevronDown, Cpu, Search } from "lucide-react";
 import { AuroraText } from "./aurora-text";
 import { RejectionList } from "./rejection-list";
 import { ShineBorder } from "./shine-border";
-import { bestShare, bestShareContext, compactNumber, formatHashrate, timeAgo } from "./format";
+import { bestShare, bestShareContext, compactNumber, formatHashrate, timeAgo, whenAndAgo } from "./format";
 import { bestOf, buildWorkerRows, formatUptime, realTime, type HashrateView, type WorkerRow } from "./workers-data";
 import { fetchMeshSettings, saveMeshSettings, type FoundMiner, type MeshStatus } from "@/lib/forge-api";
 import type { ForgeApp } from "./nexus-data";
@@ -505,7 +505,9 @@ function Detail({ r, apps }: { r: WorkerRow; apps: ForgeApp[] }) {
             <dd>
               <span className="text-neon-cyan">{bestShare(best.best)}</span>
               {bestSession.best_session_height ? ` at height ${bestSession.best_session_height.toLocaleString()}` : ""}
-              {realTime(bestSession.best_session_time) ? `, ${timeAgo(bestSession.best_session_time as string)}` : ""}
+              {realTime(bestSession.best_session_time) && (
+                <span className="block text-foreground/70">{whenAndAgo(bestSession.best_session_time as string)}</span>
+              )}
             </dd>
           </>
         )}
@@ -515,7 +517,9 @@ function Detail({ r, apps }: { r: WorkerRow; apps: ForgeApp[] }) {
             <dd>
               <span className="text-neon-cyan">{bestShare(allTime)}</span>
               {allTimeOn.worker.height_at_best ? ` at height ${allTimeOn.worker.height_at_best.toLocaleString()}` : ""}
-              {realTime(allTimeOn.worker.time_at_best) ? `, ${timeAgo(allTimeOn.worker.time_at_best as string)}` : ""}
+              {realTime(allTimeOn.worker.time_at_best) && (
+                <span className="block text-foreground/70">{whenAndAgo(allTimeOn.worker.time_at_best as string)}</span>
+              )}
             </dd>
           </>
         )}

@@ -46,3 +46,33 @@ export function timeAgo(when: string | number): string {
   const hours = Math.floor(mins / 60);
   return hours < 48 ? `${hours}h ago` : `${Math.floor(hours / 24)}d ago`;
 }
+
+// When something happened and how long ago: "12:21pm 09/10/2026 - 3 hrs ago"
+// (time and date in the browser's own order), as the coin apps' best-share
+// tips show it. Empty for a missing or invalid time.
+export function whenAndAgo(when: string | number): string {
+  const d = new Date(when);
+  const ms = d.getTime();
+  if (!Number.isFinite(ms)) return "";
+  const time = d
+    .toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
+    .replace(/\s+(?=[ap]\.?\s?m\.?$)/i, "")
+    .toLowerCase();
+  const date = d.toLocaleDateString(undefined, {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+  const mins = Math.floor((Date.now() - ms) / 60_000);
+  const ago = (n: number, unit: string) =>
+    `${n} ${unit}${n === 1 ? "" : "s"} ago`;
+  const since =
+    mins < 1
+      ? "just now"
+      : mins < 60
+        ? ago(mins, "min")
+        : mins < 48 * 60
+          ? ago(Math.floor(mins / 60), "hr")
+          : ago(Math.floor(mins / 1440), "day");
+  return `${time} ${date} - ${since}`;
+}
