@@ -302,10 +302,15 @@ async function fetchJSON<T>(url: string): Promise<T | null> {
 
 // fetchForgeApps: the main entry. Returns the live ForgeApp[] for the installed coins.
 export async function fetchForgeApps(): Promise<ForgeApp[]> {
-  const [stats, meshSettings] = await Promise.all([
+  const [stats, meshSettings, forgenxApps] = await Promise.all([
     fetchJSON<EngineStats>("/api/engine/stats"),
     fetchMeshSettings(),
+    fetchJSON<{ apps?: { id: string }[] }>("/api/apps"),
   ]);
+  // On ForgeNX, which coin apps are installed comes from ForgeNX's own app
+  // list. (Off ForgeNX there's no such list: a coin counts as installed when
+  // its node answers, or the engine is mining it.)
+  const installedIds = forgenxApps?.apps ? new Set(forgenxApps.apps.map((a) => a.id)) : null;
   const serverHost = meshSettings?.mesh_address?.trim() ?? "";
   const symbols = stats?.coins ? Object.keys(stats.coins) : [];
   if (symbols.length === 0) return [];
@@ -341,7 +346,12 @@ export async function fetchForgeApps(): Promise<ForgeApp[]> {
 
   const apps: ForgeApp[] = results.map(({ sym, meta, status, settings, hashrate15m, workers }) => {
     const online = status?.node?.rpcOnline ?? false;
-    const installed = status?.engine_connected ?? status != null;
+    // Not engine_connected alone: the engine only starts a coin's pool once its
+    // node has synced, so a node still syncing counted as not installed (empty
+    // rings, "0/N installed", the coin dimmed).
+    const installed = installedIds
+      ? installedIds.has(meta.coinId)
+      : !!(status?.engine_connected || status?.node?.rpcOnline);
     const poolHash = hashrate15m;
     const percentage = totalHashrate > 0 ? (poolHash / totalHashrate) * 100 : 0;
 
