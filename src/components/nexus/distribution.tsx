@@ -5,16 +5,30 @@ import type { ForgeApp } from "./nexus-data";
 
 type NodeFigures = Record<string, { miners: number; ths: number }>;
 
+// What a coin is doing, for the Status column: mining only when the engine has
+// its pool running and hashrate is going to it.
+function coinState(app: ForgeApp): { label: string; color: string; pulse: boolean } {
+  const s = app.status;
+  if (!app.installed) return { label: "Not installed", color: "var(--muted-foreground)", pulse: false };
+  if (s?.engine_connected && app.percentage > 0) return { label: "Mining", color: "var(--neon-green)", pulse: true };
+  if (s?.engine_connected) return { label: "Ready", color: "var(--neon-cyan)", pulse: false };
+  if (s?.node?.rpcOnline && !s?.node?.synced) return { label: "Syncing", color: "var(--neon-violet)", pulse: true };
+  return { label: "Offline", color: "var(--neon-pink)", pulse: false };
+}
+
 function DistributionDonut({ apps }: { apps: ForgeApp[] }) {
-  const total = apps.reduce((sum, a) => sum + a.percentage, 0) || 1;
+  const sum = apps.reduce((acc, a) => acc + a.percentage, 0);
+  const total = sum || 1;
   const radius = 62;
   const circumference = 2 * Math.PI * radius;
   let offset = 0;
 
   return (
     <div className="relative mx-auto aspect-square w-full max-w-[150px]">
-      <svg viewBox="0 0 160 160" className="absolute inset-0 -rotate-90 animate-spin-slow">
-        {apps.map((app, i) => {
+      <svg viewBox="0 0 160 160" className={`absolute inset-0 -rotate-90 ${sum > 0 ? "animate-spin-slow" : ""}`}>
+        {/* The empty ring: shown when nothing is mining. */}
+        <circle cx="80" cy="80" r={radius} fill="none" stroke="oklch(0.16 0.02 265)" strokeWidth="11" />
+        {sum > 0 && apps.map((app, i) => {
           const length = (app.percentage / total) * circumference;
           const dash = `${Math.max(0, length - 1.5)} ${circumference - length + 1.5}`;
           const dashOffset = -offset - circumference;
@@ -38,8 +52,17 @@ function DistributionDonut({ apps }: { apps: ForgeApp[] }) {
         })}
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <p className="font-display text-2xl font-bold tabular-nums">100%</p>
-        <p className="text-[0.6rem] tracking-[0.24em] text-muted-foreground uppercase">Total</p>
+        {sum > 0 ? (
+          <>
+            <p className="font-display text-2xl font-bold tabular-nums">100%</p>
+            <p className="text-[0.6rem] tracking-[0.24em] text-muted-foreground uppercase">Total</p>
+          </>
+        ) : (
+          <>
+            <p className="font-display text-2xl font-bold tabular-nums text-muted-foreground">0%</p>
+            <p className="text-[0.6rem] tracking-[0.24em] text-muted-foreground uppercase">Nothing mining</p>
+          </>
+        )}
       </div>
     </div>
   );
@@ -152,19 +175,24 @@ export function HashrateDistribution({
                       {app.percentage.toFixed(1)}%
                     </td>
                     <td className="rounded-r-full py-2 pr-3 text-right">
-                      <span
-                        className="inline-flex items-center gap-1.5 text-[0.6rem] font-semibold tracking-[0.14em] uppercase"
-                        style={{ color: app.installed ? "var(--neon-green)" : "var(--muted-foreground)" }}
-                      >
-                        <span
-                          className="size-1.5 rounded-full"
-                          style={{
-                            background: app.installed ? "var(--neon-green)" : "var(--muted-foreground)",
-                            animation: app.installed ? "pulse-glow 2.4s ease-in-out infinite" : undefined,
-                          }}
-                        />
-                        {app.installed ? "Active" : "Idle"}
-                      </span>
+                      {(() => {
+                        const st = coinState(app);
+                        return (
+                          <span
+                            className="inline-flex items-center gap-1.5 text-[0.6rem] font-semibold tracking-[0.14em] whitespace-nowrap uppercase"
+                            style={{ color: st.color }}
+                          >
+                            <span
+                              className="size-1.5 rounded-full"
+                              style={{
+                                background: st.color,
+                                animation: st.pulse ? "pulse-glow 2.4s ease-in-out infinite" : undefined,
+                              }}
+                            />
+                            {st.label}
+                          </span>
+                        );
+                      })()}
                     </td>
                   </tr>
                 );
