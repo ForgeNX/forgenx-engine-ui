@@ -4,7 +4,7 @@ export type ForgeAppNode = {
   syncStatus: string;
   syncNote: string;
   syncPercent: number;
-  checks: { label: string; ok: boolean }[];
+  checks: { label: string; ok: boolean; wide?: boolean }[];
   blockHeight: string;
   bestHeight: string;
   blocksFound: number;

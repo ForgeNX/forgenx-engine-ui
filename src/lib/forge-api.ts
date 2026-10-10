@@ -111,6 +111,10 @@ type CoinSettings = {
   sv2Enabled?: boolean;
   sv2AuthorityPubkey?: string;
   payoutAddress?: string;
+  // Saved node settings the node isn't using yet (prune, network): the app
+  // needs restarting to apply them.
+  restartPending?: boolean;
+  restartPendingFor?: string[];
 };
 
 // One worker session on one coin, as /api/apps/{coin}/workers reports it. A
@@ -258,7 +262,9 @@ function mapNode(s: CoinStatus, settings: CoinSettings | null, serverHost: strin
           ? "Initial block download"
           : "Catching up to tip",
     syncPercent,
-    // Seven readiness checks, each wired to a real signal.
+    // Seven readiness checks, each wired to a real signal, and an eighth
+    // only while the coin app needs a restart to apply saved node settings
+    // (across the whole row, under the others).
     checks: [
       { label: "Node RPC ready", ok: online },
       { label: "Blockchain synced", ok: online && synced },
@@ -267,6 +273,13 @@ function mapNode(s: CoinStatus, settings: CoinSettings | null, serverHost: strin
       { label: "Stratum V2 port open", ok: v2Open },
       { label: "ForgeNX Engine online", ok: engineOnline },
       { label: "ZMQ connected", ok: zmqOk },
+      ...(settings?.restartPending
+        ? [{
+            label: `Restart required to apply ${settings.restartPendingFor?.length ? settings.restartPendingFor.join(" and ") : "new settings"}`,
+            ok: false,
+            wide: true,
+          }]
+        : []),
     ],
     blockHeight: String(n?.blocks ?? 0),
     bestHeight: String(n?.headers ?? n?.chain_tip ?? 0),

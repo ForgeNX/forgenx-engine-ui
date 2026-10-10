@@ -139,7 +139,7 @@ export function NodeDetail({ app }: { app: ForgeApp }) {
             {[{ label: live ? "Node online" : "Node offline", ok: live }, ...n.checks].map((check, i) => (
               <li
                 key={check.label}
-                className="flex items-center gap-1.5 text-[0.72rem] font-semibold tracking-wider"
+                className={`flex items-center gap-1.5 text-[0.72rem] font-semibold tracking-wider ${"wide" in check && check.wide ? "sm:col-span-2" : ""}`}
                 style={{ animation: `rise 0.5s ease-out ${120 + i * 50}ms both` }}
               >
                 <span
