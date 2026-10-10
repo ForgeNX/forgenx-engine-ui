@@ -275,11 +275,11 @@ function mapNode(s: CoinStatus, settings: CoinSettings | null, serverHost: strin
     // (across the whole row, under the others).
     checks: [
       { label: "Node RPC ready", ok: online },
-      { label: "Blockchain synced", ok: online && synced },
       { label: "Payout address configured", ok: payoutConfigured },
+      { label: "Blockchain synced", ok: online && synced },
+      { label: "ForgeNX Engine online", ok: engineOnline },
       { label: "Stratum V1 port open", ok: v1Open },
       { label: "Stratum V2 port open", ok: v2Open },
-      { label: "ForgeNX Engine online", ok: engineOnline },
       { label: "ZMQ connected", ok: zmqOk },
       ...(settings?.restartPending
         ? [{
@@ -401,11 +401,11 @@ export async function fetchForgeApps(): Promise<ForgeApp[]> {
             syncPercent: 0,
             checks: [
               { label: "Node RPC ready", ok: false },
-              { label: "Blockchain synced", ok: false },
               { label: "Payout address configured", ok: false },
+              { label: "Blockchain synced", ok: false },
+              { label: "ForgeNX Engine online", ok: false },
               { label: "Stratum V1 port open", ok: false },
               { label: "Stratum V2 port open", ok: false },
-              { label: "ForgeNX Engine online", ok: false },
               { label: "ZMQ connected", ok: false },
             ],
             blockHeight: "—",

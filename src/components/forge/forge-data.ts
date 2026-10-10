@@ -1,10 +1,10 @@
 export const READINESS_CHECKS = [
   "Node RPC ready",
-  "Blockchain synced",
   "Payout address configured",
+  "Blockchain synced",
+  "ForgeNX Engine online",
   "Stratum V1 port open",
   "Stratum V2 port open",
-  "ForgeNX Engine online",
   "ZMQ connected",
 ] as const;
 
