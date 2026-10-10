@@ -220,13 +220,21 @@ function fmtBlockTime(rfc: string): string {
   return `${time} ${day} ${month} ${year}`;
 }
 
+// A node's sync percentage as shown: two decimals while syncing ("99.99"),
+// and just "100" once it's there.
+export function formatSyncPercent(p: number): string {
+  return p >= 100 ? "100" : p.toFixed(2);
+}
+
 // ── Mapping ─────────────────────────────────────────────────────────────────────
 function mapNode(s: CoinStatus, settings: CoinSettings | null, serverHost: string): ForgeAppNode {
   const n = s.node;
   const p = s.pool;
   const online = n?.rpcOnline ?? false;
-  const syncPercent = Math.round(n?.sync_pct ?? 0);
   const synced = n?.synced ?? false;
+  // The engine sends it truncated to two decimals. Kept that way (rounding
+  // showed 99.995 as 100 while still syncing), and never 100 until synced.
+  const syncPercent = synced ? 100 : Math.min(99.99, Math.floor((n?.sync_pct ?? 0) * 100) / 100);
 
   // Build stratum URLs from the browser host + real ports (matches old UI).
   // The server's own address, as saved in Mesh Settings, so the URLs are the
@@ -253,7 +261,7 @@ function mapNode(s: CoinStatus, settings: CoinSettings | null, serverHost: strin
       ? "Offline"
       : synced
         ? "Synced (100%)"
-        : `Syncing… (${syncPercent}%)`,
+        : `Syncing… (${formatSyncPercent(syncPercent)}%)`,
     syncNote: !online
       ? "Node RPC unreachable"
       : synced

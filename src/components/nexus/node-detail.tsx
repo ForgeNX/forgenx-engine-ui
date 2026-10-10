@@ -5,6 +5,7 @@ import { ShineBorder } from "./shine-border";
 import { useHoverTip } from "./hover-tip";
 import { AuroraText } from "./aurora-text";
 import type { ForgeApp } from "./nexus-data";
+import { formatSyncPercent } from "@/lib/forge-api";
 
 // Low-level clipboard write with async API + legacy fallback. Returns success.
 function writeClipboard(text: string): boolean {
@@ -118,11 +119,12 @@ export function NodeDetail({ app }: { app: ForgeApp }) {
                 />
               </svg>
               {/* Sync percentage centred inside the ring, like the coin apps */}
+              {/* "100%" at full size; "99.99%" smaller, so it fits inside the ring */}
               <span
-                className="font-display text-lg font-bold tabular-nums"
+                className={`font-display font-bold tabular-nums ${n.syncPercent >= 100 ? "text-lg" : "text-[0.72rem]"}`}
                 style={{ color: live ? "var(--neon-green)" : "var(--muted-foreground)" }}
               >
-                {n.syncPercent}%
+                {formatSyncPercent(n.syncPercent)}%
               </span>
             </span>
             <div className="min-w-0">
